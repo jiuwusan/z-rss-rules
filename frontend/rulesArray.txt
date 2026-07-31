@@ -1,0 +1,134 @@
+[
+  {
+    "addPaused": null,
+    "affectedFeeds": [
+      "https://hdsky.me/torrentrss.php?rows=30&cat402=1&cat411=1&cat403=1&cat412=1&cat413=1&cat416=1&tea31=1&tea35=1&tea37=1&icat=1&ismalldescr=1&linktype=dl&passkey=123cd79e3590fb1665e9195f2ac74e22"
+    ],
+    "assignedCategory": "series",
+    "enabled": true,
+    "episodeFilter": "",
+    "ignoreDays": 0,
+    "lastMatch": "31 Jul 2026 12:22:45 +0000",
+    "mustContain": "H265.*HDSWEB.*(九门|非份之罪)",
+    "mustNotContain": "(HDR|60fps|HHWEB)",
+    "previouslyMatchedEpisodes": [],
+    "priority": 0,
+    "savePath": "",
+    "smartFilter": false,
+    "torrentContentLayout": null,
+    "torrentParams": {
+      "category": "series",
+      "download_limit": -1,
+      "download_path": "",
+      "inactive_seeding_time_limit": -2,
+      "operating_mode": "AutoManaged",
+      "ratio_limit": -2,
+      "save_path": "",
+      "seeding_time_limit": -2,
+      "share_limit_action": "Default",
+      "skip_checking": false,
+      "ssl_certificate": "",
+      "ssl_dh_params": "",
+      "ssl_private_key": "",
+      "tags": [
+        ""
+      ],
+      "upload_limit": -1
+    },
+    "useRegex": true,
+    "mustContainKeywords": [
+      "九门",
+      "非份之罪"
+    ],
+    "mustNotContainKeywords": [
+      "HHWEB"
+    ]
+  },
+  {
+    "addPaused": null,
+    "affectedFeeds": [
+      "https://hhanclub.net/torrentrss.php?passkey=d3ffd24ad2715eb803cd9184eaa9d096&rows=50&cat403=1&cat402=1&cod6=1&tea1=1&tag5=1&icat=1&ismalldescr=1&linktype=dl"
+    ],
+    "assignedCategory": "series",
+    "enabled": true,
+    "episodeFilter": "",
+    "ignoreDays": 0,
+    "lastMatch": "",
+    "mustContain": "H265.*HHWEB.*(九五三)",
+    "mustNotContain": "(HDR|60fps|HDSWEB)",
+    "previouslyMatchedEpisodes": [],
+    "priority": 0,
+    "savePath": "",
+    "smartFilter": false,
+    "torrentContentLayout": null,
+    "torrentParams": {
+      "category": "series",
+      "download_limit": -1,
+      "download_path": "",
+      "inactive_seeding_time_limit": -2,
+      "operating_mode": "AutoManaged",
+      "ratio_limit": -2,
+      "save_path": "",
+      "seeding_time_limit": -2,
+      "share_limit_action": "Default",
+      "skip_checking": false,
+      "ssl_certificate": "",
+      "ssl_dh_params": "",
+      "ssl_private_key": "",
+      "tags": [
+        ""
+      ],
+      "upload_limit": -1
+    },
+    "useRegex": true,
+    "mustContainKeywords": [
+      "九五三"
+    ],
+    "mustNotContainKeywords": [
+      "HDSWEB"
+    ]
+  },
+  {
+    "addPaused": null,
+    "affectedFeeds": [
+      "https://hdsky.me/torrentrss.php?rows=30&cat402=1&cat411=1&cat403=1&cat412=1&cat413=1&cat416=1&tea31=1&tea35=1&tea37=1&icat=1&ismalldescr=1&linktype=dl&passkey=123cd79e3590fb1665e9195f2ac74e22"
+    ],
+    "assignedCategory": "series",
+    "enabled": true,
+    "episodeFilter": "",
+    "ignoreDays": 0,
+    "lastMatch": "31 Jul 2026 11:14:10 +0000",
+    "mustContain": "H265-Pure.HDSWEB",
+    "mustNotContain": "(HDR|60fps|HHWEB|九门|非份之罪)",
+    "previouslyMatchedEpisodes": [],
+    "priority": 0,
+    "savePath": "",
+    "smartFilter": false,
+    "torrentContentLayout": null,
+    "torrentParams": {
+      "category": "series",
+      "download_limit": -1,
+      "download_path": "",
+      "inactive_seeding_time_limit": -2,
+      "operating_mode": "AutoManaged",
+      "ratio_limit": -2,
+      "save_path": "",
+      "seeding_time_limit": -2,
+      "share_limit_action": "Default",
+      "skip_checking": false,
+      "ssl_certificate": "",
+      "ssl_dh_params": "",
+      "ssl_private_key": "",
+      "tags": [
+        ""
+      ],
+      "upload_limit": -1
+    },
+    "useRegex": true,
+    "mustNotContainKeywords": [
+      "HHWEB",
+      "九门",
+      "非份之罪"
+    ]
+  }
+]

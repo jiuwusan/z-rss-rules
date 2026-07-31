@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>qBittorrent Rules Manager</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="text/javascript">
+      const GLOBAL_NOT_CONTAIN = ["HDR", "60fps"];
+      const queryRules = async () => {
+        const response = await fetch("/api/v2/rss/rules");
+        const rules = await response.json();
+        console.log(rules);
+        const rulesArray = Object.keys(rules).map((name) => {
+          const rule = rules[name];
+          rule.mustContainKeywords = rule.mustContain
+            .match(/\((.*?)\)/)?.[1]
+            .split("|");
+          rule.mustNotContainKeywords = rule.mustNotContain
+            .match(/\((.*?)\)/)?.[1]
+            .split("|")
+            .filter((keyword) => !GLOBAL_NOT_CONTAIN.includes(keyword));
+          return rule;
+        });
+        console.log("rulesArray:", JSON.stringify(rulesArray, null, 2));
+      };
+      // 执行
+      queryRules();
+    </script>
+  </body>
+</html>
