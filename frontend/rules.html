@@ -4,28 +4,117 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>qBittorrent Rules Manager</title>
+    <style>
+      body {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+        color: #1f2937;
+        font-family: sans-serif;
+        background: #f3f4f6;
+      }
+
+      .rule-card {
+        margin-bottom: 16px;
+        padding: 16px 20px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .rule-card h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .rule-card ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+    </style>
   </head>
   <body>
+    <h1>RSS 规则关键词</h1>
     <div id="app"></div>
     <script type="text/javascript">
-      const GLOBAL_NOT_CONTAIN = ["HDR", "60fps"];
-      const queryRules = async () => {
-        const response = await fetch("/api/v2/rss/rules");
-        const rules = await response.json();
-        console.log(rules);
-        const rulesArray = Object.keys(rules).map((name) => {
-          const rule = rules[name];
-          rule.mustContainKeywords = rule.mustContain
-            .match(/\((.*?)\)/)?.[1]
-            .split("|");
-          rule.mustNotContainKeywords = rule.mustNotContain
-            .match(/\((.*?)\)/)?.[1]
-            .split("|")
-            .filter((keyword) => !GLOBAL_NOT_CONTAIN.includes(keyword));
-          return rule;
-        });
-        console.log("rulesArray:", JSON.stringify(rulesArray, null, 2));
+      const GLOBAL_NOT_CONTAIN = ['HDR', '60fps'];
+
+      /**
+       * 从规则表达式的首个括号中提取关键词。
+       * @param {string} expression 规则表达式
+       * @returns {string[]} 关键词数组
+       */
+      const extractKeywords = expression => {
+        const keywordGroup = expression?.match(/\((.*?)\)/)?.[1];
+        return keywordGroup ? keywordGroup.split('|').filter(Boolean) : [];
       };
+
+      /**
+       * 将接口规则对象转换为包含规则名和关键词数组的页面数据。
+       * @param {Record<string, object>} rules 接口返回的规则对象
+       * @returns {object[]} 页面规则数组
+       */
+      const transformRules = rules =>
+        Object.entries(rules).map(([name, rule]) => ({
+          ...rule,
+          name,
+          mustContainKeywords: extractKeywords(rule.mustContain),
+          mustNotContainKeywords: extractKeywords(rule.mustNotContain).filter(keyword => !GLOBAL_NOT_CONTAIN.includes(keyword))
+        }));
+
+      /**
+       * 按规则名渲染 mustContainKeywords。
+       * @param {object[]} rulesArray 页面规则数组
+       * @returns {void}
+       */
+      const renderRules = rulesArray => {
+        const app = document.getElementById('app');
+        const ruleCards = rulesArray.map(rule => {
+          const card = document.createElement('section');
+          const name = document.createElement('h2');
+          const keywordList = document.createElement('ul');
+          const keywords = rule.mustContainKeywords.length ? rule.mustContainKeywords : ['无关键词'];
+
+          card.className = 'rule-card';
+          name.textContent = rule.name;
+          keywords.forEach(keyword => {
+            const keywordItem = document.createElement('li');
+            keywordItem.textContent = keyword;
+            keywordList.append(keywordItem);
+          });
+          card.append(name, keywordList);
+          return card;
+        });
+
+        app.replaceChildren(...ruleCards);
+      };
+
+      /**
+       * 显示规则加载失败状态。
+       * @returns {void}
+       */
+      const renderLoadError = () => {
+        const app = document.getElementById('app');
+        const message = document.createElement('p');
+        message.textContent = '规则加载失败';
+        app.replaceChildren(message);
+      };
+
+      const queryRules = async () => {
+        try {
+          const response = await fetch('/api/v2/rss/rules');
+          if (!response.ok) {
+            throw new Error(`请求规则失败：HTTP ${response.status}`);
+          }
+
+          const rules = await response.json();
+          renderRules(transformRules(rules));
+        } catch (error) {
+          console.error(error);
+          renderLoadError();
+        }
+      };
+
       // 执行
       queryRules();
     </script>
