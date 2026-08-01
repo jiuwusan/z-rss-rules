@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,96 +27,179 @@
         font-size: 18px;
       }
 
-      .rule-card ul {
+      .help-text {
+        margin: 0 0 8px;
+        color: #6b7280;
+        font-size: 14px;
+      }
+
+      .keyword-tag-editor {
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 48px;
+        padding: 8px 10px;
+        border: 1px solid #9ca3af;
+        border-radius: 6px;
+        background: #ffffff;
+        cursor: text;
+      }
+
+      .keyword-tag-editor:focus-within {
+        border-color: #2563eb;
+        outline: 2px solid #bfdbfe;
+      }
+
+      .keyword-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        color: #1e3a8a;
+        background: #dbeafe;
+      }
+
+      .keyword-tag-list {
+        display: contents;
+      }
+
+      .keyword-tag-delete {
+        padding: 0;
+        color: #1e3a8a;
+        line-height: 1;
+        background: transparent;
+      }
+
+      .keyword-tag-delete:disabled {
+        color: #6b7280;
+        background: transparent;
+      }
+
+      .keyword-tag-input {
+        flex: 1 1 160px;
+        min-width: 120px;
+        padding: 4px 2px;
+        border: 0;
+        outline: 0;
+        font: inherit;
+      }
+
+      .pure-rule-card {
+        background: #eff6ff;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        position: sticky;
+        bottom: 0;
+        padding: 16px 0;
+        background: #f3f4f6;
+      }
+
+      .status-message {
         margin: 0;
-        padding-left: 20px;
+      }
+
+      .status-error {
+        color: #b91c1c;
+      }
+
+      .login-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgb(17 24 39 / 55%);
+      }
+
+      .login-overlay[hidden] {
+        display: none;
+      }
+
+      .login-dialog {
+        box-sizing: border-box;
+        width: min(100%, 420px);
+        padding: 24px;
+        border-radius: 10px;
+        background: #ffffff;
+        box-shadow: 0 20px 45px rgb(17 24 39 / 25%);
+      }
+
+      .login-dialog h2 {
+        margin: 0 0 20px;
+      }
+
+      .login-form-field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      .login-form-field input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #9ca3af;
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      .login-form-field input:focus {
+        border-color: #2563eb;
+        outline: 2px solid #bfdbfe;
+      }
+
+      .login-error {
+        min-height: 21px;
+        margin: 0 0 14px;
+        color: #b91c1c;
+      }
+
+      .login-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      #login-cancel-button {
+        color: #1f2937;
+        background: #e5e7eb;
+      }
+
+      #login-cancel-button:disabled {
+        color: #6b7280;
+        background: #f3f4f6;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: 0;
+        border-radius: 6px;
+        color: #ffffff;
+        font: inherit;
+        background: #2563eb;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
       }
     </style>
   </head>
   <body>
     <h1>RSS 规则关键词</h1>
     <div id="app"></div>
-    <script type="text/javascript">
-      const GLOBAL_NOT_CONTAIN = ['HDR', '60fps'];
-
-      /**
-       * 从规则表达式的首个括号中提取关键词。
-       * @param {string} expression 规则表达式
-       * @returns {string[]} 关键词数组
-       */
-      const extractKeywords = expression => {
-        const keywordGroup = expression?.match(/\((.*?)\)/)?.[1];
-        return keywordGroup ? keywordGroup.split('|').filter(Boolean) : [];
-      };
-
-      /**
-       * 将接口规则对象转换为包含规则名和关键词数组的页面数据。
-       * @param {Record<string, object>} rules 接口返回的规则对象
-       * @returns {object[]} 页面规则数组
-       */
-      const transformRules = rules =>
-        Object.entries(rules).map(([name, rule]) => ({
-          ...rule,
-          name,
-          mustContainKeywords: extractKeywords(rule.mustContain),
-          mustNotContainKeywords: extractKeywords(rule.mustNotContain).filter(keyword => !GLOBAL_NOT_CONTAIN.includes(keyword))
-        }));
-
-      /**
-       * 按规则名渲染 mustContainKeywords。
-       * @param {object[]} rulesArray 页面规则数组
-       * @returns {void}
-       */
-      const renderRules = rulesArray => {
-        const app = document.getElementById('app');
-        const ruleCards = rulesArray.map(rule => {
-          const card = document.createElement('section');
-          const name = document.createElement('h2');
-          const keywordList = document.createElement('ul');
-          const keywords = rule.mustContainKeywords.length ? rule.mustContainKeywords : ['无关键词'];
-
-          card.className = 'rule-card';
-          name.textContent = rule.name;
-          keywords.forEach(keyword => {
-            const keywordItem = document.createElement('li');
-            keywordItem.textContent = keyword;
-            keywordList.append(keywordItem);
-          });
-          card.append(name, keywordList);
-          return card;
-        });
-
-        app.replaceChildren(...ruleCards);
-      };
-
-      /**
-       * 显示规则加载失败状态。
-       * @returns {void}
-       */
-      const renderLoadError = () => {
-        const app = document.getElementById('app');
-        const message = document.createElement('p');
-        message.textContent = '规则加载失败';
-        app.replaceChildren(message);
-      };
-
-      const queryRules = async () => {
-        try {
-          const response = await fetch('/api/v2/rss/rules');
-          if (!response.ok) {
-            throw new Error(`请求规则失败：HTTP ${response.status}`);
-          }
-
-          const rules = await response.json();
-          renderRules(transformRules(rules));
-        } catch (error) {
-          console.error(error);
-          renderLoadError();
-        }
-      };
-
-      // 执行
-      queryRules();
-    </script>
+    <script src="./rules.js?v=1.0.1"></script>
   </body>
 </html>

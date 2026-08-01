@@ -1,0 +1,16 @@
+curl 'https://cloud.jiuwusan.cn:36080/api/v2/auth/login' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9' \
+  -H 'content-type: application/x-www-form-urlencoded;charset=UTF-8' \
+  -b 'life_toolkit_session=2629c159-be2d-4e87-9f27-0d620fdc635c' \
+  -H 'origin: https://cloud.jiuwusan.cn:36080' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://cloud.jiuwusan.cn:36080/' \
+  -H 'sec-ch-ua: "Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
+  --data-raw 'username=jiuwusan&password=ZkD953497'

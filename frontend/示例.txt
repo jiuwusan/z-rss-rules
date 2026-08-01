@@ -1,0 +1,43 @@
+如果关键词编辑为如下内容：
+HDSWEB: 九门、非份之罪、少年张三丰
+HHWEB: 侠客行、雪中悍刀行
+Pure-HDSWEB: 无关键词
+
+则mustContain和mustNotContain分别变更为以下后提交保存：
+HDSWEB
+mustContain：H265.*HDSWEB.*(九门|非份之罪|少年张三丰)
+mustNotContain：(HDR|60fps|HHWEB)
+
+HHWEB
+mustContain：H265.*HHWEB.*(侠客行|雪中悍刀行)
+mustNotContain：(HDR|60fps|HDSWEB)
+
+Pure-HDSWEB
+mustContain：H265-Pure.HDSWEB
+mustNotContain：(HDR|60fps|HHWEB|九门|非份之罪|少年张三丰|侠客行|雪中悍刀行)
+
+备注(1): 除了Pure-HDSWEB外，mustContain必须有一个关键词，如果没有则使用"九五三"补位，"(xxx|yyy|...)"之前的内容以"/api/v2/rss/rules"返回的结果为准
+备注(2): Pure-HDSWEB的mustContain以返回值为准，保持不变，mustNotContain动态生成，其他压制组，mustNotContain以返回值为准，保持不变，mustContain动态生成
+接口示例如下：
+
+ruleName: HDSWEB
+
+ruleDef: {"addPaused":null,"affectedFeeds":["https://hdsky.me/torrentrss.php?rows=30&cat402=1&cat411=1&cat403=1&cat412=1&cat413=1&cat416=1&tea31=1&tea35=1&tea37=1&icat=1&ismalldescr=1&linktype=dl&passkey=123cd79e3590fb1665e9195f2ac74e22"],"assignedCategory":"series","enabled":true,"episodeFilter":"","ignoreDays":0,"lastMatch":"31 Jul 2026 12:22:45 +0000","mustContain":"H265.*HDSWEB.*(九门|非份之罪|少年张三丰)","mustNotContain":"(HDR|60fps|HHWEB)","previouslyMatchedEpisodes":[],"priority":0,"savePath":"","smartFilter":false,"torrentContentLayout":null,"torrentParams":{"category":"series","download_limit":-1,"download_path":"","inactive_seeding_time_limit":-2,"operating_mode":"AutoManaged","ratio_limit":-2,"save_path":"","seeding_time_limit":-2,"share_limit_action":"Default","skip_checking":false,"ssl_certificate":"","ssl_dh_params":"","ssl_private_key":"","tags":[""],"upload_limit":-1,"stopped":null,"content_layout":null},"useRegex":true}
+
+
+curl 'xxxxxxxx/api/v2/rss/setRule' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9' \
+  -H 'content-type: application/x-www-form-urlencoded;charset=UTF-8' \
+  -b 'SID=3bbXlFSaPejj3+Ga228d5BBZEjq+99h9; life_toolkit_session=2629c159-be2d-4e87-9f27-0d620fdc635c' \
+  -H 'origin: https://cloud.jiuwusan.cn:36080' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://cloud.jiuwusan.cn:36080/' \
+  -H 'sec-ch-ua: "Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
+  --data-raw 'ruleName=HDSWEB&ruleDef=%7B%22addPaused%22%3Anull%2C%22affectedFeeds%22%3A%5B%22https%3A%2F%2Fhdsky.me%2Ftorrentrss.php%3Frows%3D30%26cat402%3D1%26cat411%3D1%26cat403%3D1%26cat412%3D1%26cat413%3D1%26cat416%3D1%26tea31%3D1%26tea35%3D1%26tea37%3D1%26icat%3D1%26ismalldescr%3D1%26linktype%3Ddl%26passkey%3D123cd79e3590fb1665e9195f2ac74e22%22%5D%2C%22assignedCategory%22%3A%22series%22%2C%22enabled%22%3Atrue%2C%22episodeFilter%22%3A%22%22%2C%22ignoreDays%22%3A0%2C%22lastMatch%22%3A%2231+Jul+2026+12%3A22%3A45+%2B0000%22%2C%22mustContain%22%3A%22H265.*HDSWEB.*%28%E4%B9%9D%E9%97%A8%7C%E9%9D%9E%E4%BB%BD%E4%B9%8B%E7%BD%AA%29%22%2C%22mustNotContain%22%3A%22%28HDR%7C60fps%7CHHWEB%29%22%2C%22previouslyMatchedEpisodes%22%3A%5B%5D%2C%22priority%22%3A0%2C%22savePath%22%3A%22%22%2C%22smartFilter%22%3Afalse%2C%22torrentContentLayout%22%3Anull%2C%22torrentParams%22%3A%7B%22category%22%3A%22series%22%2C%22download_limit%22%3A-1%2C%22download_path%22%3A%22%22%2C%22inactive_seeding_time_limit%22%3A-2%2C%22operating_mode%22%3A%22AutoManaged%22%2C%22ratio_limit%22%3A-2%2C%22save_path%22%3A%22%22%2C%22seeding_time_limit%22%3A-2%2C%22share_limit_action%22%3A%22Default%22%2C%22skip_checking%22%3Afalse%2C%22ssl_certificate%22%3A%22%22%2C%22ssl_dh_params%22%3A%22%22%2C%22ssl_private_key%22%3A%22%22%2C%22tags%22%3A%5B%22%22%5D%2C%22upload_limit%22%3A-1%2C%22stopped%22%3Anull%2C%22content_layout%22%3Anull%7D%2C%22useRegex%22%3Atrue%7D'
