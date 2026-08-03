@@ -339,6 +339,23 @@ test('authenticatedFetch 非 403 时直接返回且不显示登录弹窗', async
   assert.equal(findElements(body, element => element.className === 'login-overlay').length, 0);
 });
 
+test('登录和标签输入框渲染 placeholder', async () => {
+  const { app, body, document } = createFakeDocument();
+  const { rules } = loadRulesScript({ document, fetch: () => new Promise(() => {}) });
+  const fetchImpl = async () => ({ ok: false, status: 403 });
+
+  rules.authenticatedFetch('/api/v2/rss/rules', {}, fetchImpl);
+  await waitForCondition(() => findLoginElements(body).form);
+  const { usernameInput, passwordInput } = findLoginElements(body);
+
+  rules.renderEditor(rules.createEditorState(createServerRules()));
+  const keywordInput = findElements(app, element => element.className === 'keyword-tag-input')[0];
+
+  assert.equal(usernameInput.placeholder, '请输入用户名');
+  assert.equal(passwordInput.placeholder, '请输入密码');
+  assert.equal(keywordInput.placeholder, '输入关键词');
+});
+
 test('authenticatedFetch 遇到 403 后登录并重试原请求', async () => {
   const { app, body, document } = createFakeDocument();
   const requests = [];

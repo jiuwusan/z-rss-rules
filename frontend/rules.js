@@ -363,11 +363,13 @@ const createLoginDialog = () => {
   usernameLabel.textContent = '用户名';
   usernameInput.id = 'login-username';
   usernameInput.type = 'text';
+  usernameInput.placeholder = '请输入用户名';
   usernameInput.setAttribute('autocomplete', 'username');
   passwordField.className = 'login-form-field';
   passwordLabel.textContent = '密码';
   passwordInput.id = 'login-password';
   passwordInput.type = 'password';
+  passwordInput.placeholder = '请输入密码';
   passwordInput.setAttribute('autocomplete', 'current-password');
   errorElement.className = 'login-error';
   errorElement.setAttribute('role', 'alert');
@@ -736,6 +738,7 @@ const renderKeywordEditor = (ruleName, state, helpTextId) => {
 
   keywordInput.className = 'keyword-tag-input';
   keywordInput.type = 'text';
+  keywordInput.placeholder = '输入关键词';
   keywordInput.setAttribute('aria-label', `${ruleName} 关键词`);
   keywordInput.setAttribute('aria-describedby', helpTextId);
   keywordInput.addEventListener('input', event => {
