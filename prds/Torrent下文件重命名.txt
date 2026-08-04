@@ -1,0 +1,5 @@
+https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-list
+
+（1）首先在页面上调用 /api/v2/torrents/info ，添加时间倒序，并支持搜索
+（2）选中某个种子，调用 /api/v2/torrents/files，获取 Torrent 下面的所有文件列表
+（3）通过设置 matchRegex 和 replaceRegex 来批量匹配和批量修改 File 名称，然后调用 /api/v2/torrents/renameFile 保存
