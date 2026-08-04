@@ -208,6 +208,8 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
   let keywordInputsByRuleName = {};
   let keywordDeleteButtonsByRuleName = {};
   let keywordTagRenderersByRuleName = {};
+  let contentRoot = null;
+  let refreshRulesButton = null;
   let saveAllButton = null;
   let statusElement = null;
 
@@ -271,6 +273,9 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
     renderedKeywordDeleteButtons.forEach(button => {
       button.disabled = isEditorBusy;
     });
+    if (refreshRulesButton) {
+      refreshRulesButton.disabled = isEditorBusy;
+    }
 
     if (!saveAllButton) {
       return;
@@ -512,7 +517,7 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
     saveAllButton.addEventListener('click', () => saveAll());
     actions.append(statusElement, saveAllButton);
 
-    root.replaceChildren(content, actions);
+    contentRoot.replaceChildren(content, actions);
     updateDraftStatus();
     updateEditorControls();
   };
@@ -524,7 +529,7 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
   const renderLoading = () => {
     const message = documentRef.createElement('p');
     message.textContent = '正在加载规则';
-    root.replaceChildren(message);
+    contentRoot.replaceChildren(message);
   };
 
   /**
@@ -536,7 +541,7 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
     const errorMessage = documentRef.createElement('p');
     errorMessage.className = 'status-error';
     errorMessage.textContent = message;
-    root.replaceChildren(errorMessage);
+    contentRoot.replaceChildren(errorMessage);
   };
 
   /**
@@ -545,11 +550,49 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
    * @returns {Promise<object>} 最新编辑状态
    */
   const loadRules = async trustedPureFixedKeywords => {
-    renderLoading();
+    if (!editorState) {
+      renderLoading();
+    } else {
+      setStatus('正在加载规则');
+    }
     const serverRules = await requestRules();
     const state = createEditorState(serverRules, trustedPureFixedKeywords);
     renderEditor(state);
     return state;
+  };
+
+  const refreshRules = async () => {
+    if (isEditorBusy) {
+      return;
+    }
+
+    isEditorBusy = true;
+    updateEditorControls();
+    try {
+      await loadRules(editorState?.pureFixedKeywords);
+    } catch (error) {
+      if (editorState) {
+        setStatus(`规则加载失败：${error.message}`, true);
+      } else {
+        renderLoadError();
+      }
+    } finally {
+      isEditorBusy = false;
+      updateEditorControls();
+    }
+  };
+
+  const renderTool = () => {
+    const refreshActions = documentRef.createElement('div');
+    contentRoot = documentRef.createElement('div');
+    refreshRulesButton = documentRef.createElement('button');
+    refreshActions.className = 'tool-refresh-actions';
+    refreshRulesButton.id = 'refresh-rss-rules';
+    refreshRulesButton.type = 'button';
+    refreshRulesButton.textContent = '刷新规则';
+    refreshRulesButton.addEventListener('click', refreshRules);
+    refreshActions.append(refreshRulesButton);
+    root.replaceChildren(refreshActions, contentRoot);
   };
 
   /**
@@ -610,13 +653,14 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
    * @returns {Promise<void>}
    */
   const initialize = async () => {
+    renderTool();
     try {
-      await loadRules();
+      await refreshRules();
     } catch (error) {
       console.error(error);
       renderLoadError();
     }
   };
 
-  return { initialize, refresh: loadRules };
+  return { initialize, refresh: refreshRules };
 };

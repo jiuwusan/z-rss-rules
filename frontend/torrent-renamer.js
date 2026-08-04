@@ -16,7 +16,7 @@ export const filterTorrents = (torrents, query) => {
 };
 
 export const splitTorrentPath = path => {
-  const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  const separatorIndex = path.lastIndexOf('/');
   if (separatorIndex === -1) {
     return { directory: '', fileName: path };
   }
@@ -122,6 +122,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let fileRequestVersion = 0;
   let torrentRequestVersion = 0;
   let initializationPromise = null;
+  let isLoadingTorrents = false;
   let isLoadingFiles = false;
   let fileLoadError = null;
   let isSaving = false;
@@ -133,6 +134,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let previewBody = null;
   let selectAllButton = null;
   let clearSelectedButton = null;
+  let refreshTorrentsButton = null;
   let refreshButton = null;
   let saveButton = null;
   let statusElement = null;
@@ -145,14 +147,16 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   const getSelectedItems = () => preview.items.filter(item => item.isValid && item.isSelected);
 
   const updateControls = () => {
-    searchInput.disabled = isSaving;
-    matchInput.disabled = isSaving || !selectedTorrent;
-    replaceInput.disabled = isSaving || !selectedTorrent;
-    flagsInput.disabled = isSaving || !selectedTorrent;
-    refreshButton.disabled = isSaving || isLoadingFiles || !selectedTorrent;
-    selectAllButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
-    clearSelectedButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
-    saveButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
+    const isBusy = isSaving || isLoadingTorrents || isLoadingFiles;
+    searchInput.disabled = isBusy;
+    matchInput.disabled = isBusy || !selectedTorrent;
+    replaceInput.disabled = isBusy || !selectedTorrent;
+    flagsInput.disabled = isBusy || !selectedTorrent;
+    refreshTorrentsButton.disabled = isBusy;
+    refreshButton.disabled = isBusy || isLoadingFiles || !selectedTorrent;
+    selectAllButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
+    clearSelectedButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
+    saveButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
     saveButton.textContent = isSaving ? '保存中' : '保存重命名';
   };
 
@@ -163,7 +167,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       const hash = documentRef.createElement('span');
       button.className = 'torrent-item';
       button.type = 'button';
-      button.disabled = isSaving;
+      button.disabled = isSaving || isLoadingTorrents;
       button.setAttribute('aria-pressed', String(torrent.hash === selectedTorrent?.hash));
       name.className = 'torrent-name';
       name.textContent = torrent.name ?? '';
@@ -187,7 +191,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       checkbox.className = 'rename-preview-select';
       checkbox.type = 'checkbox';
       checkbox.checked = item.isSelected;
-      checkbox.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
+      checkbox.disabled = isSaving || isLoadingTorrents || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
       checkbox.setAttribute('aria-label', `保存 ${item.oldPath}`);
       checkbox.addEventListener('change', () => {
         item.isSelected = item.isValid && checkbox.checked;
@@ -259,7 +263,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   };
 
   const selectTorrent = async torrent => {
-    if (isSaving) {
+    if (isSaving || isLoadingTorrents) {
       return;
     }
 
@@ -275,12 +279,16 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
 
   const loadTorrents = async () => {
     const requestVersion = ++torrentRequestVersion;
+    isLoadingTorrents = true;
+    renderTorrentList();
+    renderPreview();
     setStatus('正在加载 Torrent');
     try {
       const serverTorrents = await api.requestTorrents();
       if (requestVersion !== torrentRequestVersion) {
         return { isCurrent: false, error: null };
       }
+      isLoadingTorrents = false;
       torrents = serverTorrents;
       let didClearSelection = false;
       if (selectedTorrent) {
@@ -298,8 +306,8 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         }
       }
       renderTorrentList();
+      renderPreview();
       if (didClearSelection) {
-        renderPreview();
         setStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
       } else {
         setStatus(`已加载 ${torrents.length} 个 Torrent`);
@@ -309,11 +317,21 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       if (requestVersion !== torrentRequestVersion) {
         return { isCurrent: false, error: null };
       }
+      isLoadingTorrents = false;
       torrents = [];
       renderTorrentList();
+      renderPreview();
       setStatus(`Torrent 加载失败：${error.message}`, true);
       return { isCurrent: true, error };
     }
+  };
+
+  const refreshTorrentList = () => {
+    if (isLoadingTorrents || isSaving) {
+      return;
+    }
+
+    return loadTorrents();
   };
 
   /**
@@ -372,6 +390,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     const previewTable = documentRef.createElement('table');
     const previewHead = documentRef.createElement('thead');
     const previewHeaderRow = documentRef.createElement('tr');
+    const torrentControls = documentRef.createElement('div');
     const actions = documentRef.createElement('div');
 
     searchInput = documentRef.createElement('input');
@@ -382,6 +401,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     previewBody = documentRef.createElement('tbody');
     selectAllButton = documentRef.createElement('button');
     clearSelectedButton = documentRef.createElement('button');
+    refreshTorrentsButton = documentRef.createElement('button');
     refreshButton = documentRef.createElement('button');
     saveButton = documentRef.createElement('button');
     statusElement = documentRef.createElement('p');
@@ -393,6 +413,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     searchInput.type = 'search';
     searchInput.placeholder = '搜索 Torrent 名称或 hash';
     searchInput.setAttribute('aria-label', '搜索 Torrent 名称或 hash');
+    torrentControls.className = 'torrent-list-controls';
+    refreshTorrentsButton.id = 'refresh-torrents';
+    refreshTorrentsButton.type = 'button';
+    refreshTorrentsButton.textContent = '刷新 Torrent';
     torrentList.className = 'torrent-list';
     matchInput.id = 'match-regex';
     matchInput.placeholder = '匹配正则';
@@ -433,6 +457,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       searchQuery = searchInput.value;
       renderTorrentList();
     });
+    refreshTorrentsButton.addEventListener('click', refreshTorrentList);
     [matchInput, replaceInput, flagsInput].forEach(input => input.addEventListener('input', rebuildPreview));
     selectAllButton.addEventListener('click', () => {
       preview.items.forEach(item => {
@@ -449,7 +474,8 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     refreshButton.addEventListener('click', () => loadSelectedTorrentFiles());
     saveButton.addEventListener('click', () => saveSelectedItems());
 
-    torrentPanel.append(searchInput, torrentList);
+    torrentControls.append(searchInput, refreshTorrentsButton);
+    torrentPanel.append(torrentControls, torrentList);
     actions.append(selectAllButton, clearSelectedButton, refreshButton, saveButton);
     editorPanel.append(matchInput, replaceInput, flagsInput, previewTable, actions, statusElement);
     layout.append(torrentPanel, editorPanel);

@@ -53,7 +53,7 @@
 - Produces: `FakeElement`、`createFakeDocument()`、`findElements(root, predicate)`、`waitForCondition(predicate)`。
 - Produces: `npm test`，执行 `node --test tests/*.test.js`。
 
-- [ ] **Step 1: 写测试基础的失败验证**
+- [x] **Step 1: 写测试基础的失败验证**
 
 在 `tests/quick-tools.test.js` 中先导入尚不存在的 helper：
 
@@ -68,13 +68,13 @@ test('共享 DOM helper 创建 app 容器', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/quick-tools.test.js`
 
 Expected: FAIL，提示无法找到 `tests/helpers/fake-dom.js` 或不能按 ES Module 解析。
 
-- [ ] **Step 3: 添加最小 ES Module 配置和 helper**
+- [x] **Step 3: 添加最小 ES Module 配置和 helper**
 
 `package.json`：
 
@@ -91,13 +91,13 @@ Expected: FAIL，提示无法找到 `tests/helpers/fake-dom.js` 或不能按 ES 
 
 将现有 `tests/rules.test.js` 中的 `FakeElement`、`createFakeDocument`、`findElements` 和 `waitForCondition` 原样迁移到 `tests/helpers/fake-dom.js`，改为具名导出；保留事件派发、焦点、属性和父子节点行为。
 
-- [ ] **Step 4: 运行测试确认 GREEN**
+- [x] **Step 4: 运行测试确认 GREEN**
 
 Run: `node --test tests/quick-tools.test.js`
 
 Expected: PASS，1 项测试通过。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json tests/helpers/fake-dom.js tests/quick-tools.test.js
@@ -119,7 +119,7 @@ git commit -m "test: 建立 Quick Tools 模块测试基础"
 - Produces client methods: `authenticatedFetch(url, options)`、`requestLogin()`。
 - `authenticatedFetch` 保留现有 HTTP 403、并发、取消、焦点恢复和请求重放语义。
 
-- [ ] **Step 1: 迁移鉴权测试并改为导入新接口**
+- [x] **Step 1: 迁移鉴权测试并改为导入新接口**
 
 把原 `tests/rules.test.js` 中从“authenticatedFetch 非 401/403”到登录并发、取消和竞态的测试迁移至 `tests/auth.test.js`。测试通过：
 
@@ -132,13 +132,13 @@ const responsePromise = authClient.authenticatedFetch('/api/v2/rss/rules', {
 
 保留原有请求顺序、登录表单、错误提示、密码清理、共享 Promise 和取消后的断言。
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/auth.test.js`
 
 Expected: FAIL，提示无法找到 `frontend/auth.js` 或 `createAuthClient` 未导出。
 
-- [ ] **Step 3: 实现鉴权模块**
+- [x] **Step 3: 实现鉴权模块**
 
 将现有 `rules.js` 的登录状态和函数迁入 `createAuthClient` 闭包，避免模块级状态污染测试：
 
@@ -159,13 +159,13 @@ export const createAuthClient = ({ documentRef = document, fetchImpl = fetch } =
 
 登录弹窗的 DOM 结构和中文文案保持现有测试定义。
 
-- [ ] **Step 4: 运行鉴权测试确认 GREEN**
+- [x] **Step 4: 运行鉴权测试确认 GREEN**
 
 Run: `node --test tests/auth.test.js`
 
 Expected: 全部鉴权迁移测试通过，无未处理 Promise 拒绝。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/auth.js tests/auth.test.js
@@ -185,7 +185,7 @@ git commit -m "refactor: 抽离共享鉴权模块"
 - Produces: `createQbittorrentApi(authenticatedFetch)`。
 - Produces methods: `requestRules()`、`setRule(ruleName, ruleDef)`、`requestTorrents()`、`requestTorrentFiles(hash)`、`renameTorrentFile(hash, oldPath, newPath)`。
 
-- [ ] **Step 1: 写五个 API 方法的失败测试**
+- [x] **Step 1: 写五个 API 方法的失败测试**
 
 核心新断言：
 
@@ -206,23 +206,23 @@ assert.equal(requests[2].options.body.get('newPath'), '目录/新.mkv');
 
 同时迁移现有 `requestRules` 和 `setRule` 的请求与错误测试。
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/qbittorrent-api.test.js`
 
 Expected: FAIL，API 工厂不存在。
 
-- [ ] **Step 3: 实现 API 工厂**
+- [x] **Step 3: 实现 API 工厂**
 
 每个方法使用共享 `authenticatedFetch`，GET 设置 `credentials: 'include'`，POST 使用 `URLSearchParams`。非成功响应抛出包含操作名、规则名或路径的中文错误。
 
-- [ ] **Step 4: 运行测试确认 GREEN**
+- [x] **Step 4: 运行测试确认 GREEN**
 
 Run: `node --test tests/qbittorrent-api.test.js`
 
 Expected: RSS 与 Torrent API 测试全部通过。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/qbittorrent-api.js tests/qbittorrent-api.test.js
@@ -244,7 +244,7 @@ git commit -m "feat: 封装 qBittorrent Quick Tools API"
 - Produces pure functions: `parseKeywordInput`、`extractKeywords`、`buildOrdinaryMustContain`、`createEditorState`、`createSavePlan`、`executeSavePlan`。
 - Produces: `createRssRulesTool({ root, api, documentRef })`，返回 `initialize()` 和 `refresh()`。
 
-- [ ] **Step 1: 将 RSS 测试迁移为 ES Module 导入**
+- [x] **Step 1: 将 RSS 测试迁移为 ES Module 导入**
 
 把原单体测试中所有 RSS 纯函数、标签编辑、渲染、保存按钮、安全保存顺序、成功刷新和失败重读测试迁移到 `tests/rss-rules.test.js`。调用形式改为直接导入和控制器工厂：
 
@@ -253,23 +253,23 @@ const tool = createRssRulesTool({ root: app, api, documentRef: document });
 await tool.initialize();
 ```
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/rss-rules.test.js`
 
 Expected: FAIL，`frontend/rss-rules.js` 不存在。
 
-- [ ] **Step 3: 迁移 RSS 生产逻辑**
+- [x] **Step 3: 迁移 RSS 生产逻辑**
 
 将原 `rules.js` 中 RSS 纯函数和编辑器状态迁入新模块。把隐式全局 `document` 和 API 函数改为工厂参数；保留所有中文文案、DOM 行为和安全保存顺序。
 
-- [ ] **Step 4: 运行 RSS 测试确认 GREEN**
+- [x] **Step 4: 运行 RSS 测试确认 GREEN**
 
 Run: `node --test tests/rss-rules.test.js`
 
 Expected: 原有 RSS 行为测试全部通过。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/rss-rules.js tests/rss-rules.test.js
@@ -290,7 +290,7 @@ git commit -m "refactor: 迁移 RSS 规则工具模块"
 - Produces: `buildRenamePreview(files, { matchRegex, replaceRegex, flags })`，返回 `{ error, items }`。
 - Preview item: `{ index, oldPath, oldFileName, newPath, newFileName, status, isValid, isSelected }`。
 
-- [ ] **Step 1: 写搜索、路径和正则替换失败测试**
+- [x] **Step 1: 写搜索、路径和正则替换失败测试**
 
 ```js
 test('仅替换最后文件名并保留目录', () => {
@@ -304,17 +304,17 @@ test('支持捕获组和忽略大小写', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，重命名纯函数不存在。
 
-- [ ] **Step 3: 实现最小搜索与预览函数**
+- [x] **Step 3: 实现最小搜索与预览函数**
 
 搜索使用名称和 hash 的小写包含匹配。预览为每个文件重新使用可靠的正则状态，避免 `g` 或 `y` 的 `lastIndex` 污染；只对 `file.name` 最后一个 `/` 后的部分调用 `replace`。
 
-- [ ] **Step 4: 写校验失败测试**
+- [x] **Step 4: 写校验失败测试**
 
 分别覆盖无匹配、无变化、空名称、`.`、`..`、`/`、`\\`、重复目标和目标已存在。冲突项必须满足：
 
@@ -324,13 +324,13 @@ assert.equal(item.isSelected, false);
 assert.match(item.status, /冲突|无效|未匹配|无变化/);
 ```
 
-- [ ] **Step 5: 运行校验测试确认 RED**
+- [x] **Step 5: 运行校验测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，至少一个无效或冲突场景仍被标记为有效。
 
-- [ ] **Step 6: 实现完整校验并确认 GREEN**
+- [x] **Step 6: 实现完整校验并确认 GREEN**
 
 先生成全部候选路径，再统计目标路径数量并与原路径集合比较；任何占用或重复目标都标为不可保存。有效变化项默认 `isSelected: true`。
 
@@ -338,7 +338,7 @@ Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: 搜索、路径、替换和校验测试全部通过。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/torrent-renamer.js tests/torrent-renamer.test.js
@@ -358,21 +358,21 @@ git commit -m "feat: 添加 Torrent 文件重命名预览"
 - Produces: `createTorrentRenamerTool({ root, api, documentRef })`，返回 `initialize()` 和 `refresh()`。
 - Internal save contract: 只保存 `isValid && isSelected` 的预览项，按文件原顺序执行。
 
-- [ ] **Step 1: 写加载、搜索、单选和预览交互失败测试**
+- [x] **Step 1: 写加载、搜索、单选和预览交互失败测试**
 
 构造两个 Torrent 和多个文件，断言初始化请求一次 Torrent 列表、搜索同时匹配名称/hash、选择 Torrent 后请求其文件、输入正则后渲染默认勾选预览。
 
-- [ ] **Step 2: 运行交互测试确认 RED**
+- [x] **Step 2: 运行交互测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，控制器工厂不存在或未渲染控件。
 
-- [ ] **Step 3: 实现控制器渲染和状态更新**
+- [x] **Step 3: 实现控制器渲染和状态更新**
 
 控制器持有 Torrent 列表、筛选词、当前 Torrent、文件列表、正则草稿、预览选择和忙碌状态。输入改变时重新计算预览；全选只选有效项，取消全选清空选择。
 
-- [ ] **Step 4: 写顺序保存和失败刷新测试**
+- [x] **Step 4: 写顺序保存和失败刷新测试**
 
 ```js
 assert.deepEqual(
@@ -384,23 +384,23 @@ assert.equal(maxConcurrentRenames, 1);
 
 失败场景让第二项抛错，断言第三项未调用、文件列表被重新读取、状态包含“成功 1 项”和失败文件。
 
-- [ ] **Step 5: 运行保存测试确认 RED**
+- [x] **Step 5: 运行保存测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，保存按钮或顺序停止逻辑尚未实现。
 
-- [ ] **Step 6: 实现保存和刷新**
+- [x] **Step 6: 实现保存和刷新**
 
 使用 `for...of` 串行等待。捕获首个错误后保留成功数量和失败项；`finally` 中恢复控件状态，保存完成后调用当前 Torrent 文件刷新并以服务端结果重建预览。
 
-- [ ] **Step 7: 运行测试确认 GREEN**
+- [x] **Step 7: 运行测试确认 GREEN**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: Torrent 工具全部测试通过。
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/torrent-renamer.js tests/torrent-renamer.test.js
@@ -424,7 +424,7 @@ git commit -m "feat: 添加 Torrent 文件批量重命名交互"
 - Consumes: `createAuthClient`、`createQbittorrentApi`、`createRssRulesTool`、`createTorrentRenamerTool`。
 - Produces: `initializeQuickTools({ documentRef })`。
 
-- [ ] **Step 1: 写 HTML 和标签行为失败测试**
+- [x] **Step 1: 写 HTML 和标签行为失败测试**
 
 断言 HTML 包含：
 
@@ -438,27 +438,27 @@ assert.match(html, /<link rel="stylesheet" href="\.\/quick-tools\.css(?:\?[^\"]+
 
 控制器测试断言默认只初始化 RSS，首次切换到 Torrent 时才初始化 Torrent，往返切换不重复初始化。
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/quick-tools.test.js`
 
 Expected: FAIL，Quick Tools 文件不存在。
 
-- [ ] **Step 3: 创建页面、样式和入口**
+- [x] **Step 3: 创建页面、样式和入口**
 
 HTML 提供 `#rss-rules-tool` 和 `#torrent-renamer-tool` 容器。入口只创建一次共享 auth/api；使用按钮的 `aria-selected`、面板 `hidden` 和键盘可聚焦结构切换工具。CSS 迁移现有视觉并补充响应式双栏、Torrent 列表和预览表。
 
-- [ ] **Step 4: 删除旧入口并更新所有测试引用**
+- [x] **Step 4: 删除旧入口并更新所有测试引用**
 
 确认没有代码或测试继续引用 `rules.html`、`rules.js`、`initializeRulesPage` 或旧 VM 加载器，然后删除旧文件。
 
-- [ ] **Step 5: 运行完整测试确认 GREEN**
+- [x] **Step 5: 运行完整测试确认 GREEN**
 
 Run: `npm test`
 
 Expected: 所有 auth、API、RSS、Torrent 和 Quick Tools 测试通过。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/quick-tools.html frontend/quick-tools.css frontend/quick-tools.js tests/quick-tools.test.js frontend/rules.html frontend/rules.js tests/rules.test.js
@@ -476,7 +476,7 @@ git commit -m "refactor: 合并 qBittorrent Quick Tools 页面"
 
 - Produces: 可部署的 `frontend/quick-tools.html` 及完整验证记录。
 
-- [ ] **Step 1: 运行语法检查**
+- [x] **Step 1: 运行语法检查**
 
 Run:
 
@@ -490,13 +490,13 @@ node --check frontend/quick-tools.js
 
 Expected: 全部退出码为 0，无输出。
 
-- [ ] **Step 2: 运行完整测试**
+- [x] **Step 2: 运行完整测试**
 
 Run: `npm test`
 
 Expected: 全部测试通过，无失败、跳过或未处理拒绝。
 
-- [ ] **Step 3: 运行格式和差异检查**
+- [x] **Step 3: 运行格式和差异检查**
 
 Run:
 
@@ -507,7 +507,7 @@ git diff --check
 
 Expected: Prettier 报告全部文件格式正确；`git diff --check` 无输出。
 
-- [ ] **Step 4: 检查最小影响范围**
+- [x] **Step 4: 检查最小影响范围**
 
 Run:
 
@@ -519,7 +519,7 @@ rg -n "rules\.html|rules\.js|initializeRulesPage" frontend tests
 
 Expected: 本功能只新增/修改设计列出的文件；`rg` 无旧入口引用。已有用户修改仍保持原状态且未被纳入本功能提交。
 
-- [ ] **Step 5: 追加会话记录并提交功能变更**
+- [x] **Step 5: 追加会话记录并提交功能变更**
 
 会话记录必须包含需求确认、改动文件、验证结果和未覆盖的真实 qBittorrent 5.0 联调风险。
 

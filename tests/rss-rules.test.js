@@ -34,6 +34,7 @@ const createToolFixture = ({ requestRules, setRule } = {}) => {
 const findKeywordInputs = app => findElements(app, element => element.className === 'keyword-tag-input');
 const findKeywordTags = app => findElements(app, element => element.className === 'keyword-tag');
 const findSaveButton = app => findElements(app, element => element.id === 'save-all-button')[0];
+const findRefreshButton = app => findElements(app, element => element.id === 'refresh-rss-rules')[0];
 const getTagTexts = app => findKeywordTags(app).map(tag => tag.children[0].textContent);
 
 test('parseKeywordInput 支持多种分隔符并去重', () => {
@@ -169,11 +170,72 @@ test('initialize 渲染关键词标签并支持批量输入', async () => {
   assert.equal(keywordInputs[0].getAttribute('aria-describedby'), 'keyword-help-0');
   assert.equal(findElements(app, element => element.id === 'save-status')[0].getAttribute('role'), 'status');
   assert.equal(saveButton.disabled, true);
+  assert.equal(findRefreshButton(app).textContent, '刷新规则');
   keywordInputs[0].value = '少年张三丰|非份之罪;少年张三丰';
   keywordInputs[0].dispatch('input');
   assert.deepEqual(getTagTexts(app), ['九门', '少年张三丰', '非份之罪', '侠客行', '旧剧']);
   assert.equal(findSaveButton(app).disabled, false);
   assert.equal(app.textContent.includes('有未保存修改'), true);
+});
+
+test('首次规则加载失败后可点击刷新按钮恢复', async () => {
+  let requestCount = 0;
+  const { app, tool } = createToolFixture({
+    requestRules: async () => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        throw new Error('已取消登录');
+      }
+      return createServerRules();
+    }
+  });
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    await tool.initialize();
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  const refreshButton = findRefreshButton(app);
+  assert.equal(app.textContent.includes('规则加载失败'), true);
+  assert.equal(refreshButton.disabled, false);
+
+  await refreshButton.dispatch('click').listenerResult;
+
+  assert.equal(requestCount, 2);
+  assert.equal(getTagTexts(app).includes('九门'), true);
+});
+
+test('规则刷新按钮防止重复点击并在刷新期间禁用编辑和保存控件', async () => {
+  let requestCount = 0;
+  let resolveRefresh;
+  const pendingRefresh = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  const { app, tool } = createToolFixture({
+    requestRules: () => {
+      requestCount += 1;
+      return requestCount === 1 ? Promise.resolve(createServerRules()) : pendingRefresh;
+    }
+  });
+  await tool.initialize();
+
+  const refreshButton = findRefreshButton(app);
+  const refreshPromise = refreshButton.dispatch('click').listenerResult;
+  refreshButton.dispatch('click');
+
+  assert.equal(requestCount, 2);
+  assert.equal(refreshButton.disabled, true);
+  assert.equal(
+    findKeywordInputs(app).every(input => input.disabled),
+    true
+  );
+  assert.equal(findSaveButton(app).disabled, true);
+
+  resolveRefresh(createServerRules());
+  await refreshPromise;
+  assert.equal(refreshButton.disabled, false);
 });
 
 test('标签输入支持 Enter、blur 和空输入 Backspace', async () => {
@@ -299,6 +361,7 @@ test('保存期间禁用标签输入框和删除按钮', async () => {
     findElements(app, element => element.className === 'keyword-tag-delete').every(button => button.disabled),
     true
   );
+  assert.equal(findRefreshButton(app).disabled, true);
   releaseSave();
   await savePromise;
 });
