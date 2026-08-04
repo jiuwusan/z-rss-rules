@@ -22,6 +22,15 @@ const createToolFixture = ({ requestTorrents, requestTorrentFiles, renameTorrent
 const findById = (app, id) => findElements(app, element => element.id === id)[0];
 const findTorrentButtons = app => findElements(app, element => element.className === 'torrent-item');
 const findPreviewCheckboxes = app => findElements(app, element => element.className === 'rename-preview-select');
+const createDeferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+};
 
 test('filterTorrents 按名称或 hash 忽略大小写筛选', () => {
   const torrents = [
@@ -327,6 +336,133 @@ test('切换 Torrent 时迟到的文件响应不会覆盖当前选择', async ()
   assert.equal(findTorrentButtons(app)[1].getAttribute('aria-pressed'), 'true');
 });
 
+test('initialize 重复调用复用初始化 Promise 且不重建或清空当前表单', async () => {
+  let torrentRequestCount = 0;
+  const torrentResponse = createDeferred();
+  const { app, tool } = createToolFixture({
+    requestTorrents: () => {
+      torrentRequestCount += 1;
+      return torrentResponse.promise;
+    },
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+
+  const firstInitialize = tool.initialize();
+  const secondInitialize = tool.initialize();
+  assert.equal(secondInitialize, firstInitialize);
+  torrentResponse.resolve([{ name: 'Show', hash: 'show-hash' }]);
+  await firstInitialize;
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  const originalMatchInput = findById(app, 'match-regex');
+  originalMatchInput.value = '\\.old';
+  originalMatchInput.dispatch('input');
+
+  const thirdInitialize = tool.initialize();
+  await thirdInitialize;
+
+  assert.equal(thirdInitialize, firstInitialize);
+  assert.equal(torrentRequestCount, 1);
+  assert.equal(findById(app, 'match-regex'), originalMatchInput);
+  assert.equal(findById(app, 'match-regex').value, '\\.old');
+  assert.equal(findPreviewCheckboxes(app)[0].checked, true);
+  assert.equal(findElements(app, element => element.className === 'torrent-renamer-layout').length, 1);
+});
+
+test('并发 refresh 逆序完成时迟到响应不会覆盖较新的 Torrent 列表和状态', async () => {
+  let torrentRequestCount = 0;
+  const olderRefresh = createDeferred();
+  const newerRefresh = createDeferred();
+  const { app, tool } = createToolFixture({
+    requestTorrents: () => {
+      torrentRequestCount += 1;
+      if (torrentRequestCount === 1) {
+        return Promise.resolve([{ name: 'Initial', hash: 'initial-hash' }]);
+      }
+      return torrentRequestCount === 2 ? olderRefresh.promise : newerRefresh.promise;
+    }
+  });
+  await tool.initialize();
+
+  const olderPromise = tool.refresh();
+  const newerPromise = tool.refresh();
+  newerRefresh.resolve([{ name: 'Newest', hash: 'newest-hash' }]);
+  await newerPromise;
+  olderRefresh.resolve([{ name: 'Stale', hash: 'stale-hash' }]);
+  await olderPromise;
+
+  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['Newestnewest-hash']);
+  assert.equal(findById(app, 'rename-status').textContent.includes('已加载 1 个 Torrent'), true);
+});
+
+test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件和预览状态', async () => {
+  let torrentRequestCount = 0;
+  const torrentResponses = [
+    [{ name: 'Old Name', hash: 'show-hash' }],
+    [{ name: 'New Name', hash: 'show-hash' }],
+    []
+  ];
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => torrentResponses[torrentRequestCount++],
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+  await tool.initialize();
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '\\.old';
+  matchInput.dispatch('input');
+
+  await tool.refresh();
+  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['New Nameshow-hash']);
+  assert.equal(findTorrentButtons(app)[0].getAttribute('aria-pressed'), 'true');
+  assert.equal(findPreviewCheckboxes(app)[0].checked, true);
+
+  await tool.refresh();
+  assert.equal(findTorrentButtons(app).length, 0);
+  assert.equal(findPreviewCheckboxes(app).length, 0);
+  assert.equal(findById(app, 'match-regex').disabled, true);
+  assert.equal(findById(app, 'save-renames').disabled, true);
+  assert.equal(findById(app, 'rename-status').textContent.includes('当前选择已不存在'), true);
+});
+
+test('文件加载中或失败后修改正则不会覆盖加载状态和错误状态', async () => {
+  let fileRequestCount = 0;
+  const firstFileRequest = createDeferred();
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: () => {
+      fileRequestCount += 1;
+      if (fileRequestCount === 1) {
+        return firstFileRequest.promise;
+      }
+      return Promise.resolve([{ index: 0, name: 'episode.old.mkv' }]);
+    }
+  });
+  await tool.initialize();
+
+  const firstSelection = findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '\\.old';
+  matchInput.dispatch('input');
+  assert.equal(findById(app, 'rename-status').textContent, '正在加载 Torrent 文件');
+  assert.equal(findById(app, 'select-all-renames').disabled, true);
+  assert.equal(findById(app, 'save-renames').disabled, true);
+
+  firstFileRequest.reject(new Error('模拟文件读取失败'));
+  await firstSelection;
+  const failureStatus = findById(app, 'rename-status').textContent;
+  assert.equal(failureStatus.includes('模拟文件读取失败'), true);
+  findById(app, 'replace-regex').value = 'new';
+  findById(app, 'replace-regex').dispatch('input');
+  findById(app, 'regex-flags').value = 'gi';
+  findById(app, 'regex-flags').dispatch('input');
+  assert.equal(findById(app, 'rename-status').textContent, failureStatus);
+  assert.equal(findById(app, 'save-renames').disabled, true);
+
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  assert.equal(findById(app, 'rename-status').textContent.includes('模拟文件读取失败'), false);
+  assert.equal(findPreviewCheckboxes(app)[0].checked, true);
+});
+
 test('保存有效勾选项时严格串行执行，忙碌期间禁用控件并在成功后刷新', async () => {
   let fileRequestCount = 0;
   let activeRenames = 0;
@@ -382,6 +518,8 @@ test('保存有效勾选项时严格串行执行，忙碌期间禁用控件并�
   assert.equal(findById(app, 'regex-flags').disabled, true);
   assert.equal(findById(app, 'refresh-torrent-files').disabled, true);
   assert.equal(findById(app, 'save-renames').disabled, true);
+  assert.equal(findById(app, 'select-all-renames').disabled, true);
+  assert.equal(findById(app, 'clear-selected-renames').disabled, true);
   assert.equal(findPreviewCheckboxes(app).every(checkbox => checkbox.disabled), true);
 
   releaseFirstRename();

@@ -120,6 +120,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let files = [];
   let preview = { error: '匹配正则不能为空', items: [] };
   let fileRequestVersion = 0;
+  let torrentRequestVersion = 0;
+  let initializationPromise = null;
+  let isLoadingFiles = false;
+  let fileLoadError = null;
   let isSaving = false;
   let searchInput = null;
   let torrentList = null;
@@ -145,10 +149,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     matchInput.disabled = isSaving || !selectedTorrent;
     replaceInput.disabled = isSaving || !selectedTorrent;
     flagsInput.disabled = isSaving || !selectedTorrent;
-    refreshButton.disabled = isSaving || !selectedTorrent;
-    selectAllButton.disabled = isSaving || !preview.items.some(item => item.isValid);
-    clearSelectedButton.disabled = isSaving || !getSelectedItems().length;
-    saveButton.disabled = isSaving || Boolean(preview.error) || !getSelectedItems().length;
+    refreshButton.disabled = isSaving || isLoadingFiles || !selectedTorrent;
+    selectAllButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
+    clearSelectedButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
+    saveButton.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
     saveButton.textContent = isSaving ? '保存中' : '保存重命名';
   };
 
@@ -183,7 +187,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       checkbox.className = 'rename-preview-select';
       checkbox.type = 'checkbox';
       checkbox.checked = item.isSelected;
-      checkbox.disabled = isSaving || !item.isValid;
+      checkbox.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
       checkbox.setAttribute('aria-label', `保存 ${item.oldPath}`);
       checkbox.addEventListener('change', () => {
         item.isSelected = item.isValid && checkbox.checked;
@@ -201,6 +205,11 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   };
 
   const rebuildPreview = () => {
+    if (isLoadingFiles || fileLoadError) {
+      renderPreview();
+      return;
+    }
+
     preview = buildRenamePreview(files, {
       matchRegex: matchInput.value,
       replaceRegex: replaceInput.value,
@@ -221,6 +230,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
 
     const requestVersion = ++fileRequestVersion;
     const requestedHash = selectedTorrent.hash;
+    isLoadingFiles = true;
+    fileLoadError = null;
+    renderPreview();
     setStatus('正在加载 Torrent 文件');
     try {
       const serverFiles = await api.requestTorrentFiles(requestedHash);
@@ -228,12 +240,16 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         return { isCurrent: false, error: null };
       }
       files = serverFiles;
+      isLoadingFiles = false;
+      fileLoadError = null;
       rebuildPreview();
       return { isCurrent: true, error: null };
     } catch (error) {
       if (requestVersion !== fileRequestVersion || requestedHash !== selectedTorrent?.hash) {
         return { isCurrent: false, error: null };
       }
+      isLoadingFiles = false;
+      fileLoadError = error;
       files = [];
       preview = { error: error.message, items: [] };
       renderPreview();
@@ -250,21 +266,53 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     selectedTorrent = torrent;
     files = [];
     preview = { error: '匹配正则不能为空', items: [] };
+    isLoadingFiles = false;
+    fileLoadError = null;
     renderTorrentList();
     renderPreview();
     await loadSelectedTorrentFiles();
   };
 
   const loadTorrents = async () => {
+    const requestVersion = ++torrentRequestVersion;
     setStatus('正在加载 Torrent');
     try {
-      torrents = await api.requestTorrents();
+      const serverTorrents = await api.requestTorrents();
+      if (requestVersion !== torrentRequestVersion) {
+        return { isCurrent: false, error: null };
+      }
+      torrents = serverTorrents;
+      let didClearSelection = false;
+      if (selectedTorrent) {
+        const refreshedSelection = torrents.find(torrent => torrent.hash === selectedTorrent.hash);
+        if (refreshedSelection) {
+          selectedTorrent = refreshedSelection;
+        } else {
+          selectedTorrent = null;
+          files = [];
+          preview = { error: '匹配正则不能为空', items: [] };
+          fileRequestVersion += 1;
+          isLoadingFiles = false;
+          fileLoadError = null;
+          didClearSelection = true;
+        }
+      }
       renderTorrentList();
-      setStatus(`已加载 ${torrents.length} 个 Torrent`);
+      if (didClearSelection) {
+        renderPreview();
+        setStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
+      } else {
+        setStatus(`已加载 ${torrents.length} 个 Torrent`);
+      }
+      return { isCurrent: true, error: null };
     } catch (error) {
+      if (requestVersion !== torrentRequestVersion) {
+        return { isCurrent: false, error: null };
+      }
       torrents = [];
       renderTorrentList();
       setStatus(`Torrent 加载失败：${error.message}`, true);
+      return { isCurrent: true, error };
     }
   };
 
@@ -411,9 +459,12 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     setStatus('请选择 Torrent');
   };
 
-  const initialize = async () => {
-    renderTool();
-    await loadTorrents();
+  const initialize = () => {
+    if (!initializationPromise) {
+      renderTool();
+      initializationPromise = loadTorrents();
+    }
+    return initializationPromise;
   };
 
   return { initialize, refresh: loadTorrents };
