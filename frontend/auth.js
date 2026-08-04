@@ -1,6 +1,7 @@
 const LOGIN_CANCELLED_MESSAGE = '已取消登录';
 const LOGIN_CREDENTIAL_ERROR_MESSAGE = '用户名或密码错误，请重试';
 const AUTH_REQUIRED_STATUS = 403;
+const AUTH_CLIENTS_BY_DOCUMENT = new WeakMap();
 
 /**
  * 创建隔离登录状态的鉴权客户端。
@@ -8,8 +9,18 @@ const AUTH_REQUIRED_STATUS = 403;
  * @param {Document} dependencies.documentRef 页面文档
  * @param {typeof fetch} dependencies.fetchImpl Fetch 实现
  * @returns {{authenticatedFetch: Function, requestLogin: Function}} 鉴权客户端
+ * @throws {Error} 同一页面重复绑定不同 Fetch 实现时抛出
  */
 export const createAuthClient = ({ documentRef = globalThis.document, fetchImpl = globalThis.fetch } = {}) => {
+  const canCacheByDocument = documentRef !== null && (typeof documentRef === 'object' || typeof documentRef === 'function');
+  const cachedAuthClient = canCacheByDocument ? AUTH_CLIENTS_BY_DOCUMENT.get(documentRef) : null;
+  if (cachedAuthClient && cachedAuthClient.fetchImpl !== fetchImpl) {
+    throw new Error('同一 documentRef 只能绑定一个 fetchImpl');
+  }
+  if (cachedAuthClient) {
+    return cachedAuthClient.client;
+  }
+
   let loginDialogElements = null;
   let loginAttempt = null;
   let loginReturnFocusElement = null;
@@ -316,5 +327,9 @@ export const createAuthClient = ({ documentRef = globalThis.document, fetchImpl 
     return response;
   };
 
-  return { authenticatedFetch, requestLogin };
+  const client = { authenticatedFetch, requestLogin };
+  if (canCacheByDocument) {
+    AUTH_CLIENTS_BY_DOCUMENT.set(documentRef, { client, fetchImpl });
+  }
+  return client;
 };

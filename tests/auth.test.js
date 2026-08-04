@@ -13,6 +13,46 @@ const findLoginElements = body => ({
   cancelButton: findElements(body, element => element.id === 'login-cancel-button')[0]
 });
 
+test('同一 documentRef 重复创建时复用同一鉴权客户端', async () => {
+  const { app, body, document } = createFakeDocument();
+  const fetchImpl = async () => ({ ok: false, status: 403 });
+
+  const firstAuthClient = createAuthClient({ documentRef: document, fetchImpl });
+  const secondAuthClient = createAuthClient({ documentRef: document, fetchImpl });
+
+  assert.strictEqual(secondAuthClient, firstAuthClient);
+
+  const firstResponsePromise = firstAuthClient.authenticatedFetch('/api/first');
+  const secondResponsePromise = secondAuthClient.authenticatedFetch('/api/second');
+  await waitForCondition(() => findLoginElements(body).cancelButton);
+
+  assert.equal(findElements(body, element => element.className === 'login-overlay').length, 1);
+  assert.equal(app.inert, true);
+
+  findLoginElements(body).cancelButton.dispatch('click');
+  const results = await Promise.allSettled([firstResponsePromise, secondResponsePromise]);
+
+  assert.deepEqual(
+    results.map(result => result.reason.message),
+    ['已取消登录', '已取消登录']
+  );
+  assert.equal(app.inert, false);
+});
+
+test('同一 documentRef 不能绑定不同 fetchImpl', () => {
+  const { document } = createFakeDocument();
+  const firstFetchImpl = async () => ({ ok: true, status: 200 });
+  const secondFetchImpl = async () => ({ ok: true, status: 200 });
+
+  const authClient = createAuthClient({ documentRef: document, fetchImpl: firstFetchImpl });
+
+  assert.throws(
+    () => createAuthClient({ documentRef: document, fetchImpl: secondFetchImpl }),
+    /同一 documentRef 只能绑定一个 fetchImpl/
+  );
+  assert.strictEqual(createAuthClient({ documentRef: document, fetchImpl: firstFetchImpl }), authClient);
+});
+
 test('authenticatedFetch 非 403 时直接返回且不显示登录弹窗', async () => {
   const { body, document } = createFakeDocument();
   const fetchImpl = async () => ({ ok: true, status: 200 });
