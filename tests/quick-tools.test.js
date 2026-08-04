@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createFakeDocument } from './helpers/fake-dom.js';
+import { createFakeDocument, findElements, waitForCondition } from './helpers/fake-dom.js';
 
 const CURRENT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const QUICK_TOOLS_HTML_PATH = path.join(CURRENT_DIRECTORY, '..', 'frontend', 'quick-tools.html');
@@ -37,6 +37,31 @@ const createPageFixture = () => {
   return { document, rssPanel, rssTab, torrentPanel, torrentTab };
 };
 
+const initializeRealClients = async ({ document, fetchImpl }) => {
+  const { initializeQuickTools } = await import('../frontend/quick-tools.js');
+  let api;
+
+  await initializeQuickTools({
+    documentRef: document,
+    fetchImpl,
+    createRssRulesToolImpl: dependencies => {
+      api = dependencies.api;
+      return { async initialize() {} };
+    },
+    createTorrentRenamerToolImpl: () => ({ async initialize() {} })
+  });
+
+  return api;
+};
+
+const submitLogin = async document => {
+  await waitForCondition(() => document.getElementById('login-username'));
+  document.getElementById('login-username').value = 'admin';
+  document.getElementById('login-password').value = 'secret';
+  const loginForm = findElements(document.body, element => element.className === 'login-form')[0];
+  await loginForm.dispatch('submit').listenerResult;
+};
+
 test('Quick Tools HTML 提供标题、样式、模块入口和两个工具面板', () => {
   const html = fs.readFileSync(QUICK_TOOLS_HTML_PATH, 'utf8');
 
@@ -60,6 +85,72 @@ test('Quick Tools 样式包含双栏、窄屏纵向和登录弹窗样式', () =>
   assert.match(css, /grid-template-columns:\s*1fr/);
   assert.match(css, /\.login-overlay\s*\{/);
   assert.match(css, /\.login-dialog\s*\{/);
+  assert.match(css, /\.login-form\s*\{[^}]*margin:\s*0;/s);
+  assert.match(css, /\.rename-preview-select\s*\{[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*margin:\s*0;/s);
+});
+
+test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请求', async () => {
+  const { document } = createPageFixture();
+  const fetchCalls = [];
+  let ruleRequestCount = 0;
+  const expectedRules = { HDSWEB: { mustContain: '(九门)' } };
+  const fetchImpl = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    if (url === '/api/v2/auth/login') {
+      return { ok: true, status: 200 };
+    }
+
+    ruleRequestCount += 1;
+    return ruleRequestCount === 1
+      ? { ok: false, status: 403 }
+      : { ok: true, status: 200, json: async () => expectedRules };
+  };
+  const api = await initializeRealClients({ document, fetchImpl });
+
+  const rulesPromise = api.requestRules();
+  await submitLogin(document);
+  const rules = await rulesPromise;
+
+  assert.deepEqual(rules, expectedRules);
+  assert.deepEqual(fetchCalls.map(call => call.url), [
+    '/api/v2/rss/rules',
+    '/api/v2/auth/login',
+    '/api/v2/rss/rules'
+  ]);
+  assert.strictEqual(fetchCalls[0].options, fetchCalls[2].options);
+  assert.deepEqual(fetchCalls[0].options, { credentials: 'include' });
+});
+
+test('真实 auth 和 API 组合在 setRule 403 登录后重放同一表单请求', async () => {
+  const { document } = createPageFixture();
+  const fetchCalls = [];
+  let setRuleRequestCount = 0;
+  const ruleDef = { assignedCategory: 'series', mustContain: '(九门)' };
+  const fetchImpl = async (url, options = {}) => {
+    fetchCalls.push({ url, options });
+    if (url === '/api/v2/auth/login') {
+      return { ok: true, status: 200 };
+    }
+
+    setRuleRequestCount += 1;
+    return setRuleRequestCount === 1 ? { ok: false, status: 403 } : { ok: true, status: 200 };
+  };
+  const api = await initializeRealClients({ document, fetchImpl });
+
+  const savePromise = api.setRule('HDSWEB', ruleDef);
+  await submitLogin(document);
+  await savePromise;
+
+  assert.deepEqual(fetchCalls.map(call => call.url), [
+    '/api/v2/rss/setRule',
+    '/api/v2/auth/login',
+    '/api/v2/rss/setRule'
+  ]);
+  assert.strictEqual(fetchCalls[0].options, fetchCalls[2].options);
+  assert.strictEqual(fetchCalls[0].options.body, fetchCalls[2].options.body);
+  assert.ok(fetchCalls[0].options.body instanceof URLSearchParams);
+  assert.equal(fetchCalls[0].options.body.get('ruleName'), 'HDSWEB');
+  assert.equal(fetchCalls[0].options.body.get('ruleDef'), JSON.stringify(ruleDef));
 });
 
 test('initializeQuickTools 只创建一套共享 auth 和 API，默认只初始化 RSS', async () => {

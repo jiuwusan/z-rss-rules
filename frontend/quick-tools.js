@@ -9,10 +9,12 @@ const QUICK_TOOLS_BY_DOCUMENT = new WeakMap();
  * 初始化 Quick Tools 页面并复用同一套鉴权和 API 客户端。
  * @param {object} dependencies 外部依赖
  * @param {Document} dependencies.documentRef 页面文档
+ * @param {typeof fetch} dependencies.fetchImpl Fetch 实现
  * @returns {Promise<{selectTool: Function}>} 页面控制器
  */
 export const initializeQuickTools = ({
   documentRef = globalThis.document,
+  fetchImpl = globalThis.fetch,
   createAuthClientImpl = createAuthClient,
   createQbittorrentApiImpl = createQbittorrentApi,
   createRssRulesToolImpl = createRssRulesTool,
@@ -35,7 +37,7 @@ export const initializeQuickTools = ({
       throw new Error('Quick Tools 页面结构不完整');
     }
 
-    const authClient = createAuthClientImpl({ documentRef });
+    const authClient = createAuthClientImpl({ documentRef, fetchImpl });
     const api = createQbittorrentApiImpl(authClient.authenticatedFetch);
     const rssTool = createRssRulesToolImpl({ root: rssRoot, api, documentRef });
     const torrentTool = createTorrentRenamerToolImpl({ root: torrentRoot, api, documentRef });

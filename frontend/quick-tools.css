@@ -260,6 +260,14 @@ button:disabled {
   background: #f9fafb;
 }
 
+.rename-preview-select {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: #2563eb;
+}
+
 .actions {
   grid-column: 1 / -1;
   display: flex;
@@ -306,6 +314,10 @@ button:disabled {
 
 .login-dialog h2 {
   margin: 0 0 20px;
+}
+
+.login-form {
+  margin: 0;
 }
 
 .login-form-field {
