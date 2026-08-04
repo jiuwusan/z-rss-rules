@@ -318,7 +318,6 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         return { isCurrent: false, error: null };
       }
       isLoadingTorrents = false;
-      torrents = [];
       renderTorrentList();
       renderPreview();
       setStatus(`Torrent 加载失败：${error.message}`, true);

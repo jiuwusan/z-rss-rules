@@ -470,6 +470,40 @@ test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件�
   assert.equal(findById(app, 'rename-status').textContent.includes('当前选择已不存在'), true);
 });
 
+test('Torrent 列表刷新失败时保留已有列表、选择、预览和可操作状态', async () => {
+  let torrentRequestCount = 0;
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => {
+      torrentRequestCount += 1;
+      if (torrentRequestCount === 1) {
+        return [{ name: 'Stable Show', hash: 'stable-hash' }];
+      }
+      throw new Error('模拟列表刷新失败');
+    },
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+  await tool.initialize();
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '\\.old';
+  matchInput.dispatch('input');
+  assert.equal(findById(app, 'save-renames').disabled, false);
+
+  await findById(app, 'refresh-torrents').dispatch('click').listenerResult;
+
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['Stable Showstable-hash']
+  );
+  assert.equal(findTorrentButtons(app)[0].getAttribute('aria-pressed'), 'true');
+  assert.equal(findPreviewCheckboxes(app)[0].checked, true);
+  assert.equal(findPreviewCheckboxes(app)[0].disabled, false);
+  assert.equal(matchInput.disabled, false);
+  assert.equal(findById(app, 'save-renames').disabled, false);
+  assert.equal(findById(app, 'refresh-torrents').disabled, false);
+  assert.equal(findById(app, 'rename-status').textContent.includes('模拟列表刷新失败'), true);
+});
+
 test('文件加载中或失败后修改正则不会覆盖加载状态和错误状态', async () => {
   let fileRequestCount = 0;
   const firstFileRequest = createDeferred();

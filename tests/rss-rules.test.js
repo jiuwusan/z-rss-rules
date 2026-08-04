@@ -521,3 +521,32 @@ test('refresh 主动重新读取并渲染服务端规则', async () => {
   assert.equal(requestCount, 2);
   assert.equal(getTagTexts(app).includes('新关键词'), true);
 });
+
+test('手动刷新后保存使用最新服务端 Pure 固定排除项', async () => {
+  let requestCount = 0;
+  const savedRules = [];
+  const createRulesSnapshot = fixedKeyword => {
+    const rules = createServerRules();
+    rules['Pure-HDSWEB'].mustNotContain = `(${fixedKeyword}|HHWEB|九门|侠客行|旧剧)`;
+    return rules;
+  };
+  const { app, tool } = createToolFixture({
+    requestRules: async () => {
+      requestCount += 1;
+      return requestCount === 1 ? createRulesSnapshot('OLD-FIXED') : createRulesSnapshot('NEW-FIXED');
+    },
+    setRule: async (ruleName, ruleDef) => savedRules.push({ ruleName, ruleDef })
+  });
+  await tool.initialize();
+
+  await findRefreshButton(app).dispatch('click').listenerResult;
+  const keywordInput = findKeywordInputs(app)[0];
+  keywordInput.value = '外部刷新后新增';
+  keywordInput.dispatch('keydown', { key: 'Enter' });
+  await findSaveButton(app).dispatch('click').listenerResult;
+
+  const savedPureRule = savedRules.find(operation => operation.ruleName === 'Pure-HDSWEB');
+  assert.ok(savedPureRule);
+  assert.match(savedPureRule.ruleDef.mustNotContain, /NEW-FIXED/);
+  assert.doesNotMatch(savedPureRule.ruleDef.mustNotContain, /OLD-FIXED/);
+});

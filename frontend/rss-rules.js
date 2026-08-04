@@ -569,7 +569,7 @@ export const createRssRulesTool = ({ root, api, documentRef = globalThis.documen
     isEditorBusy = true;
     updateEditorControls();
     try {
-      await loadRules(editorState?.pureFixedKeywords);
+      await loadRules();
     } catch (error) {
       if (editorState) {
         setStatus(`规则加载失败：${error.message}`, true);
