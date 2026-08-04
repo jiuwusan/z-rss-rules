@@ -260,6 +260,30 @@ button:disabled {
   background: #f9fafb;
 }
 
+.rename-original-row {
+  background: #ffffff;
+}
+
+.rename-original-row td {
+  border-top: 1px solid #d1d5db;
+  border-bottom: 0;
+}
+
+.rename-preview-row {
+  background: #eff6ff;
+}
+
+.rename-preview-row td {
+  border-bottom-color: #bfdbfe;
+}
+
+.rename-row-type {
+  width: 96px;
+  color: #4b5563;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .rename-preview-select {
   width: 18px;
   height: 18px;

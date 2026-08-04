@@ -22,15 +22,17 @@
 ### Task 1: 以 TDD 实现文件原始行和相邻预览行
 
 **Files:**
+
 - Modify: `frontend/torrent-renamer.js`
 - Modify: `tests/torrent-renamer.test.js`
 - Modify: `frontend/quick-tools.css`
 
 **Interfaces:**
+
 - Consumes: `files: Array<{index?: number, name: string}>`、`preview.items`。
 - Produces DOM classes: `rename-original-row`、`rename-preview-row`、`rename-row-type`。
 
-- [ ] **Step 1: 写选中 Torrent 后立即显示原始文件的失败测试**
+- [x] **Step 1: 写选中 Torrent 后立即显示原始文件的失败测试**
 
 在现有初始化交互测试中，选择 Torrent 并等待文件请求完成，但不填写正则，断言：
 
@@ -42,17 +44,17 @@ assert.equal(originalRows[1].textContent.includes('season/readme.txt'), true);
 assert.equal(findPreviewCheckboxes(app).length, 0);
 ```
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，当前正则为空时表格没有文件行。
 
-- [ ] **Step 3: 实现原始文件行渲染**
+- [x] **Step 3: 实现原始文件行渲染**
 
 新增 `createOriginalRow(file)`，使用完整 `file.name`，类型为“原始文件”，状态为“待输入匹配正则”。`renderPreview()` 在 `files` 已加载但 `preview.items` 为空时仍按文件顺序渲染原始行。
 
-- [ ] **Step 4: 写相邻双行和选择框位置的失败测试**
+- [x] **Step 4: 写相邻双行和选择框位置的失败测试**
 
 输入 `\.old` 后断言表格行顺序：
 
@@ -66,27 +68,27 @@ assert.equal(previewBody.children[1].textContent.includes('season/a.mkv'), true)
 assert.equal(findPreviewCheckboxes(app).length, 2);
 ```
 
-- [ ] **Step 5: 运行测试确认 RED**
+- [x] **Step 5: 运行测试确认 RED**
 
 Run: `node --test tests/torrent-renamer.test.js`
 
 Expected: FAIL，当前每个文件只生成单行左右列预览。
 
-- [ ] **Step 6: 实现相邻双行表格**
+- [x] **Step 6: 实现相邻双行表格**
 
 将表头改为“保存、类型、文件名称、状态”。每个 `preview.items` 按 `oldPath`/文件位置匹配对应文件，依次追加原始行和预览行。预览行使用 `newPath`、现有状态和选择框；原始行不创建复选框。
 
-- [ ] **Step 7: 补充无效正则、未匹配和刷新文件测试**
+- [x] **Step 7: 补充无效正则、未匹配和刷新文件测试**
 
 - 无效正则：原始行仍存在，预览行数量为 0，状态显示错误。
 - 未匹配：原始行和预览行都存在，预览选择框禁用。
 - 刷新文件：旧行被最新服务端文件行替换，不残留旧路径。
 
-- [ ] **Step 8: 增加双行视觉样式**
+- [x] **Step 8: 增加双行视觉样式**
 
 在 `quick-tools.css` 增加原始行、预览行、类型列和分组边框样式；不改现有响应式布局和表格滚动结构。
 
-- [ ] **Step 9: 运行完整验证**
+- [x] **Step 9: 运行完整验证**
 
 Run:
 

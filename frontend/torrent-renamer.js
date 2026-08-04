@@ -180,29 +180,57 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     torrentList.replaceChildren(...items);
   };
 
+  const createOriginalRow = file => {
+    const row = documentRef.createElement('tr');
+    const selectionCell = documentRef.createElement('td');
+    const typeCell = documentRef.createElement('td');
+    const nameCell = documentRef.createElement('td');
+    const statusCell = documentRef.createElement('td');
+    row.className = 'rename-original-row';
+    typeCell.className = 'rename-row-type';
+    typeCell.textContent = '原始文件';
+    nameCell.textContent = file.name;
+    statusCell.textContent = '待输入匹配正则';
+    row.append(selectionCell, typeCell, nameCell, statusCell);
+    return row;
+  };
+
+  const createPreviewRow = item => {
+    const row = documentRef.createElement('tr');
+    const selectionCell = documentRef.createElement('td');
+    const typeCell = documentRef.createElement('td');
+    const nameCell = documentRef.createElement('td');
+    const statusCell = documentRef.createElement('td');
+    const checkbox = documentRef.createElement('input');
+    row.className = 'rename-preview-row';
+    checkbox.className = 'rename-preview-select';
+    checkbox.type = 'checkbox';
+    checkbox.checked = item.isSelected;
+    checkbox.disabled = isSaving || isLoadingTorrents || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
+    checkbox.setAttribute('aria-label', `保存 ${item.oldPath}`);
+    checkbox.addEventListener('change', () => {
+      item.isSelected = item.isValid && checkbox.checked;
+      updateControls();
+    });
+    typeCell.className = 'rename-row-type';
+    typeCell.textContent = '替换预览';
+    nameCell.textContent = item.newPath;
+    statusCell.textContent = item.status;
+    selectionCell.append(checkbox);
+    row.append(selectionCell, typeCell, nameCell, statusCell);
+    return row;
+  };
+
   const renderPreview = () => {
-    const rows = preview.items.map(item => {
-      const row = documentRef.createElement('tr');
-      const selectionCell = documentRef.createElement('td');
-      const oldNameCell = documentRef.createElement('td');
-      const newNameCell = documentRef.createElement('td');
-      const statusCell = documentRef.createElement('td');
-      const checkbox = documentRef.createElement('input');
-      checkbox.className = 'rename-preview-select';
-      checkbox.type = 'checkbox';
-      checkbox.checked = item.isSelected;
-      checkbox.disabled = isSaving || isLoadingTorrents || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
-      checkbox.setAttribute('aria-label', `保存 ${item.oldPath}`);
-      checkbox.addEventListener('change', () => {
-        item.isSelected = item.isValid && checkbox.checked;
-        updateControls();
-      });
-      oldNameCell.textContent = item.oldFileName;
-      newNameCell.textContent = item.newFileName;
-      statusCell.textContent = item.status;
-      selectionCell.append(checkbox);
-      row.append(selectionCell, oldNameCell, newNameCell, statusCell);
-      return row;
+    const previewItemsByOldPath = new Map(preview.items.map(item => [item.oldPath, item]));
+    const rows = files.flatMap((file, position) => {
+      const originalRow = createOriginalRow(file);
+      if (!preview.items.length) {
+        return [originalRow];
+      }
+
+      const previewItem = previewItemsByOldPath.get(file.name) ?? preview.items[position];
+      return previewItem ? [originalRow, createPreviewRow(previewItem)] : [originalRow];
     });
     previewBody.replaceChildren(...rows);
     updateControls();
@@ -428,7 +456,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     flagsInput.placeholder = '正则 flags';
     flagsInput.setAttribute('aria-label', '正则 flags');
     previewTable.className = 'rename-preview-table';
-    ['保存', '原文件名', '新文件名', '状态'].forEach(label => {
+    ['保存', '类型', '文件名称', '状态'].forEach(label => {
       const header = documentRef.createElement('th');
       header.textContent = label;
       previewHeaderRow.append(header);

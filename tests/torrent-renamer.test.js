@@ -16,6 +16,8 @@ const createToolFixture = ({ requestTorrents, requestTorrentFiles, renameTorrent
 
 const findById = (app, id) => findElements(app, element => element.id === id)[0];
 const findTorrentButtons = app => findElements(app, element => element.className === 'torrent-item');
+const findOriginalRows = app => findElements(app, element => element.className === 'rename-original-row');
+const findPreviewRows = app => findElements(app, element => element.className === 'rename-preview-row');
 const findPreviewCheckboxes = app => findElements(app, element => element.className === 'rename-preview-select');
 const createDeferred = () => {
   let resolve;
@@ -254,6 +256,11 @@ test('initialize 加载 Torrent，支持名称和 hash 搜索、单选及即时�
   assert.deepEqual(fileRequestHashes, ['abc123']);
   assert.equal(findTorrentButtons(app)[0].getAttribute('aria-pressed'), 'true');
   assert.equal(findTorrentButtons(app)[1].getAttribute('aria-pressed'), 'false');
+  const originalRows = findOriginalRows(app);
+  assert.equal(originalRows.length, 2);
+  assert.equal(originalRows[0].textContent.includes('season/a.old.mkv'), true);
+  assert.equal(originalRows[1].textContent.includes('season/readme.txt'), true);
+  assert.equal(findPreviewCheckboxes(app).length, 0);
 
   const matchInput = findById(app, 'match-regex');
   const replaceInput = findById(app, 'replace-regex');
@@ -270,9 +277,19 @@ test('initialize 加载 Torrent，支持名称和 hash 搜索、单选及即时�
   assert.equal(previewCheckboxes[1].disabled, true);
   assert.equal(app.textContent.includes('a.mkv'), true);
   const previewTable = findElements(app, element => element.className === 'rename-preview-table')[0];
-  const firstPreviewRow = previewTable.children[1].children[0];
-  assert.equal(firstPreviewRow.children[1].textContent, 'a.old.mkv');
-  assert.equal(firstPreviewRow.children[2].textContent, 'a.mkv');
+  assert.deepEqual(
+    previewTable.children[0].children[0].children.map(header => header.textContent),
+    ['保存', '类型', '文件名称', '状态']
+  );
+  const previewBody = previewTable.children[1];
+  assert.deepEqual(
+    previewBody.children.map(row => row.className),
+    ['rename-original-row', 'rename-preview-row', 'rename-original-row', 'rename-preview-row']
+  );
+  assert.equal(previewBody.children[0].textContent.includes('season/a.old.mkv'), true);
+  assert.equal(previewBody.children[1].textContent.includes('season/a.mkv'), true);
+  assert.equal(findElements(previewBody.children[0], element => element.className === 'rename-preview-select').length, 0);
+  assert.equal(findElements(previewBody.children[1], element => element.className === 'rename-preview-select').length, 1);
 
   previewCheckboxes[0].checked = false;
   previewCheckboxes[0].dispatch('change');
@@ -290,6 +307,89 @@ test('initialize 加载 Torrent，支持名称和 hash 搜索、单选及即时�
   await tool.refresh();
   assert.equal(torrentRequestCount, 2);
   assert.equal(findElements(app, element => element.className === 'torrent-renamer-layout').length, 1);
+});
+
+test('无效正则保留全部原始文件行且不生成预览行', async () => {
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [
+      { index: 0, name: 'season/episode.old.mkv' },
+      { index: 1, name: 'season/readme.txt' }
+    ]
+  });
+  await tool.initialize();
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '[';
+  matchInput.dispatch('input');
+
+  assert.deepEqual(
+    findOriginalRows(app).map(row => row.children[2].textContent),
+    ['season/episode.old.mkv', 'season/readme.txt']
+  );
+  assert.equal(findPreviewRows(app).length, 0);
+  assert.equal(findPreviewCheckboxes(app).length, 0);
+  assert.equal(findById(app, 'rename-status').textContent.includes('预览失败'), true);
+});
+
+test('未匹配和目标冲突文件仍显示禁用的相邻预览行', async () => {
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [
+      { index: 0, name: 'season/old.mkv' },
+      { index: 1, name: 'season/new.mkv' },
+      { index: 2, name: 'season/readme.txt' }
+    ]
+  });
+  await tool.initialize();
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '^old';
+  matchInput.dispatch('input');
+  const replaceInput = findById(app, 'replace-regex');
+  replaceInput.value = 'new';
+  replaceInput.dispatch('input');
+
+  assert.equal(findOriginalRows(app).length, 3);
+  assert.equal(findPreviewRows(app).length, 3);
+  assert.equal(
+    findPreviewCheckboxes(app).every(checkbox => checkbox.disabled),
+    true
+  );
+  assert.equal(findPreviewRows(app)[0].textContent.includes('目标路径冲突'), true);
+  assert.equal(findPreviewRows(app)[1].textContent.includes('未匹配正则'), true);
+  assert.equal(findPreviewRows(app)[2].textContent.includes('未匹配正则'), true);
+});
+
+test('刷新文件后用最新原始行和预览行替换旧路径', async () => {
+  let fileRequestCount = 0;
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => {
+      fileRequestCount += 1;
+      return fileRequestCount === 1 ? [{ index: 0, name: 'season/old.old.mkv' }] : [{ index: 0, name: 'updated/new.old.mkv' }];
+    }
+  });
+  await tool.initialize();
+  await findTorrentButtons(app)[0].dispatch('click').listenerResult;
+  const matchInput = findById(app, 'match-regex');
+  matchInput.value = '\\.old';
+  matchInput.dispatch('input');
+
+  await findById(app, 'refresh-torrent-files').dispatch('click').listenerResult;
+
+  assert.equal(fileRequestCount, 2);
+  assert.deepEqual(
+    findOriginalRows(app).map(row => row.children[2].textContent),
+    ['updated/new.old.mkv']
+  );
+  assert.deepEqual(
+    findPreviewRows(app).map(row => row.children[2].textContent),
+    ['updated/new.mkv']
+  );
+  assert.equal(app.textContent.includes('season/old.old.mkv'), false);
 });
 
 test('首次 Torrent 加载失败后可点击刷新按钮恢复', async () => {
