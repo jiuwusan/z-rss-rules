@@ -17,9 +17,13 @@ test('filterTorrents 按名称或 hash 忽略大小写筛选', () => {
   assert.deepEqual(filterTorrents(torrents, ''), torrents);
 });
 
-test('splitTorrentPath 仅从最后一个正斜杠拆分路径', () => {
+test('splitTorrentPath 从最后一个路径分隔符拆分路径', () => {
   assert.deepEqual(splitTorrentPath('目录/子目录/文件.mkv'), {
     directory: '目录/子目录/',
+    fileName: '文件.mkv'
+  });
+  assert.deepEqual(splitTorrentPath('目录\\子目录\\文件.mkv'), {
+    directory: '目录\\子目录\\',
     fileName: '文件.mkv'
   });
   assert.deepEqual(splitTorrentPath('根目录文件.mkv'), {
@@ -35,9 +39,19 @@ test('仅替换最后文件名并保留目录', () => {
   );
 
   assert.equal(preview.error, null);
+  assert.equal(preview.items[0].index, 0);
   assert.equal(preview.items[0].newPath, '目录/S01E01.mkv');
   assert.equal(preview.items[0].isValid, true);
   assert.equal(preview.items[0].isSelected, true);
+});
+
+test('Windows 风格源路径仅替换最后的文件名', () => {
+  const preview = buildRenamePreview(
+    [{ index: 0, name: '目录\\old.mkv' }],
+    { matchRegex: '^old', replaceRegex: 'new', flags: 'g' }
+  );
+
+  assert.equal(preview.items[0].newPath, '目录\\new.mkv');
 });
 
 test('支持捕获组和忽略大小写', () => {
@@ -159,4 +173,27 @@ test('无效正则清空预览并返回错误', () => {
 
   assert.equal(preview.items.length, 0);
   assert.match(preview.error, /Invalid regular expression/);
+});
+
+test('空正则返回明确错误且不产生可保存预览', () => {
+  const preview = buildRenamePreview(
+    [{ index: 0, name: 'episode.mkv' }],
+    { matchRegex: '', replaceRegex: 'prefix-', flags: 'g' }
+  );
+
+  assert.equal(preview.items.length, 0);
+  assert.match(preview.error, /不能为空/);
+});
+
+test('源路径以分隔符结尾时不允许通过空 basename 创建文件名', () => {
+  const preview = buildRenamePreview(
+    [{ index: 0, name: '目录/' }],
+    { matchRegex: '^$', replaceRegex: 'created.mkv', flags: 'g' }
+  );
+
+  assert.equal(preview.items[0].newFileName, '');
+  assert.equal(preview.items[0].newPath, '目录/');
+  assert.equal(preview.items[0].isValid, false);
+  assert.equal(preview.items[0].isSelected, false);
+  assert.match(preview.items[0].status, /无效/);
 });

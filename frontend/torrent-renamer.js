@@ -11,7 +11,7 @@ export const filterTorrents = (torrents, query) => {
 };
 
 export const splitTorrentPath = path => {
-  const separatorIndex = path.lastIndexOf('/');
+  const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
   if (separatorIndex === -1) {
     return { directory: '', fileName: path };
   }
@@ -23,6 +23,10 @@ export const splitTorrentPath = path => {
 };
 
 export const buildRenamePreview = (files, { matchRegex, replaceRegex, flags }) => {
+  if (matchRegex === '') {
+    return { error: '匹配正则不能为空', items: [] };
+  }
+
   let regex;
   try {
     regex = new RegExp(matchRegex, flags);
@@ -34,6 +38,19 @@ export const buildRenamePreview = (files, { matchRegex, replaceRegex, flags }) =
   const items = files.map((file, position) => {
     const oldPath = file.name;
     const { directory, fileName: oldFileName } = splitTorrentPath(oldPath);
+    if (oldFileName === '') {
+      return {
+        index: file.index ?? position,
+        oldPath,
+        oldFileName,
+        newPath: oldPath,
+        newFileName: oldFileName,
+        status: '无效源文件名',
+        isValid: false,
+        isSelected: false
+      };
+    }
+
     const isMatched = createRegex().test(oldFileName);
     const newFileName = oldFileName.replace(createRegex(), replaceRegex);
     const newPath = `${directory}${newFileName}`;
