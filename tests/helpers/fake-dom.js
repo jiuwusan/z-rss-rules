@@ -96,10 +96,24 @@ export class FakeElement {
 }
 
 export const createFakeDocument = () => {
+  const findById = (root, id) => {
+    if (root.id === id) {
+      return root;
+    }
+
+    for (const child of root.children) {
+      const match = findById(child, id);
+      if (match) {
+        return match;
+      }
+    }
+
+    return null;
+  };
   const document = {
     activeElement: null,
     createElement: tagName => new FakeElement(tagName, document),
-    getElementById: id => (id === 'app' ? app : null)
+    getElementById: id => findById(body, id)
   };
   const body = new FakeElement('body', document);
   const app = new FakeElement('main', document);
