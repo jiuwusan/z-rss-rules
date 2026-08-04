@@ -46,10 +46,7 @@ test('同一 documentRef 不能绑定不同 fetchImpl', () => {
 
   const authClient = createAuthClient({ documentRef: document, fetchImpl: firstFetchImpl });
 
-  assert.throws(
-    () => createAuthClient({ documentRef: document, fetchImpl: secondFetchImpl }),
-    /同一 documentRef 只能绑定一个 fetchImpl/
-  );
+  assert.throws(() => createAuthClient({ documentRef: document, fetchImpl: secondFetchImpl }), /同一 documentRef 只能绑定一个 fetchImpl/);
   assert.strictEqual(createAuthClient({ documentRef: document, fetchImpl: firstFetchImpl }), authClient);
 });
 

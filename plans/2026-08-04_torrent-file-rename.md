@@ -43,11 +43,13 @@
 ### Task 1: 建立 ES Module 测试基础并迁移共享 DOM 替身
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tests/helpers/fake-dom.js`
 - Modify: `tests/rules.test.js`
 
 **Interfaces:**
+
 - Produces: `FakeElement`、`createFakeDocument()`、`findElements(root, predicate)`、`waitForCondition(predicate)`。
 - Produces: `npm test`，执行 `node --test tests/*.test.js`。
 
@@ -105,12 +107,14 @@ git commit -m "test: 建立 Quick Tools 模块测试基础"
 ### Task 2: 抽离共享鉴权模块并迁移全部鉴权回归
 
 **Files:**
+
 - Create: `frontend/auth.js`
 - Create: `tests/auth.test.js`
 - Modify: `frontend/rules.js`
 - Modify: `tests/rules.test.js`
 
 **Interfaces:**
+
 - Produces: `createAuthClient({ documentRef, fetchImpl })`。
 - Produces client methods: `authenticatedFetch(url, options)`、`requestLogin()`。
 - `authenticatedFetch` 保留现有 HTTP 403、并发、取消、焦点恢复和请求重放语义。
@@ -171,10 +175,12 @@ git commit -m "refactor: 抽离共享鉴权模块"
 ### Task 3: 抽离 qBittorrent API 模块
 
 **Files:**
+
 - Create: `frontend/qbittorrent-api.js`
 - Create: `tests/qbittorrent-api.test.js`
 
 **Interfaces:**
+
 - Consumes: `{ authenticatedFetch(url, options): Promise<Response> }`。
 - Produces: `createQbittorrentApi(authenticatedFetch)`。
 - Produces methods: `requestRules()`、`setRule(ruleName, ruleDef)`、`requestTorrents()`、`requestTorrentFiles(hash)`、`renameTorrentFile(hash, oldPath, newPath)`。
@@ -226,12 +232,14 @@ git commit -m "feat: 封装 qBittorrent Quick Tools API"
 ### Task 4: 迁移 RSS 规则模块且保持现有行为
 
 **Files:**
+
 - Create: `frontend/rss-rules.js`
 - Create: `tests/rss-rules.test.js`
 - Modify: `frontend/rules.js`
 - Modify: `tests/rules.test.js`
 
 **Interfaces:**
+
 - Consumes API methods: `requestRules()`、`setRule(ruleName, ruleDef)`。
 - Produces pure functions: `parseKeywordInput`、`extractKeywords`、`buildOrdinaryMustContain`、`createEditorState`、`createSavePlan`、`executeSavePlan`。
 - Produces: `createRssRulesTool({ root, api, documentRef })`，返回 `initialize()` 和 `refresh()`。
@@ -271,10 +279,12 @@ git commit -m "refactor: 迁移 RSS 规则工具模块"
 ### Task 5: 以 TDD 实现 Torrent 文件名预览与冲突校验
 
 **Files:**
+
 - Create: `frontend/torrent-renamer.js`
 - Create: `tests/torrent-renamer.test.js`
 
 **Interfaces:**
+
 - Produces: `filterTorrents(torrents, query)`。
 - Produces: `splitTorrentPath(path): { directory: string, fileName: string }`。
 - Produces: `buildRenamePreview(files, { matchRegex, replaceRegex, flags })`，返回 `{ error, items }`。
@@ -284,18 +294,12 @@ git commit -m "refactor: 迁移 RSS 规则工具模块"
 
 ```js
 test('仅替换最后文件名并保留目录', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: '目录/S01E01.old.mkv' }],
-    { matchRegex: '\\.old', replaceRegex: '', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: '目录/S01E01.old.mkv' }], { matchRegex: '\\.old', replaceRegex: '', flags: 'g' });
   assert.equal(preview.items[0].newPath, '目录/S01E01.mkv');
 });
 
 test('支持捕获组和忽略大小写', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'SHOW.01.MKV' }],
-    { matchRegex: 'show\\.(\\d+)', replaceRegex: 'Episode-$1', flags: 'gi' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'SHOW.01.MKV' }], { matchRegex: 'show\\.(\\d+)', replaceRegex: 'Episode-$1', flags: 'gi' });
   assert.equal(preview.items[0].newFileName, 'Episode-01.MKV');
 });
 ```
@@ -344,10 +348,12 @@ git commit -m "feat: 添加 Torrent 文件重命名预览"
 ### Task 6: 实现 Torrent 重命名页面控制器与顺序保存
 
 **Files:**
+
 - Modify: `frontend/torrent-renamer.js`
 - Modify: `tests/torrent-renamer.test.js`
 
 **Interfaces:**
+
 - Consumes API: `requestTorrents()`、`requestTorrentFiles(hash)`、`renameTorrentFile(hash, oldPath, newPath)`。
 - Produces: `createTorrentRenamerTool({ root, api, documentRef })`，返回 `initialize()` 和 `refresh()`。
 - Internal save contract: 只保存 `isValid && isSelected` 的预览项，按文件原顺序执行。
@@ -369,7 +375,10 @@ Expected: FAIL，控制器工厂不存在或未渲染控件。
 - [ ] **Step 4: 写顺序保存和失败刷新测试**
 
 ```js
-assert.deepEqual(renameCalls.map(call => call.oldPath), ['a.old.mkv', 'b.old.mkv']);
+assert.deepEqual(
+  renameCalls.map(call => call.oldPath),
+  ['a.old.mkv', 'b.old.mkv']
+);
 assert.equal(maxConcurrentRenames, 1);
 ```
 
@@ -401,6 +410,7 @@ git commit -m "feat: 添加 Torrent 文件批量重命名交互"
 ### Task 7: 建立 Quick Tools 页面并删除旧入口
 
 **Files:**
+
 - Create: `frontend/quick-tools.html`
 - Create: `frontend/quick-tools.css`
 - Create: `frontend/quick-tools.js`
@@ -410,6 +420,7 @@ git commit -m "feat: 添加 Torrent 文件批量重命名交互"
 - Delete: `tests/rules.test.js`
 
 **Interfaces:**
+
 - Consumes: `createAuthClient`、`createQbittorrentApi`、`createRssRulesTool`、`createTorrentRenamerTool`。
 - Produces: `initializeQuickTools({ documentRef })`。
 
@@ -457,10 +468,12 @@ git commit -m "refactor: 合并 qBittorrent Quick Tools 页面"
 ### Task 8: 文档、静态检查和最终回归
 
 **Files:**
+
 - Modify: `plans/2026-08-04_torrent-file-rename.md`
 - Modify: `sessions/session_2026-08-04.md`
 
 **Interfaces:**
+
 - Produces: 可部署的 `frontend/quick-tools.html` 及完整验证记录。
 
 - [ ] **Step 1: 运行语法检查**

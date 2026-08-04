@@ -1,14 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  buildOrdinaryMustContain,
-  createEditorState,
-  createRssRulesTool,
-  createSavePlan,
-  executeSavePlan,
-  extractKeywords,
-  parseKeywordInput
-} from '../frontend/rss-rules.js';
+import { buildOrdinaryMustContain, createEditorState, createRssRulesTool, createSavePlan, executeSavePlan, extractKeywords, parseKeywordInput } from '../frontend/rss-rules.js';
 import { createFakeDocument, findElements } from './helpers/fake-dom.js';
 
 const createServerRules = () => ({
@@ -299,8 +291,14 @@ test('保存期间禁用标签输入框和删除按钮', async () => {
   keywordInput.value = '少年张三丰';
   keywordInput.dispatch('keydown', { key: 'Enter' });
   const savePromise = findSaveButton(app).dispatch('click').listenerResult;
-  assert.equal(findKeywordInputs(app).every(input => input.disabled), true);
-  assert.equal(findElements(app, element => element.className === 'keyword-tag-delete').every(button => button.disabled), true);
+  assert.equal(
+    findKeywordInputs(app).every(input => input.disabled),
+    true
+  );
+  assert.equal(
+    findElements(app, element => element.className === 'keyword-tag-delete').every(button => button.disabled),
+    true
+  );
   releaseSave();
   await savePromise;
 });

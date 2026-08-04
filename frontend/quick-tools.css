@@ -1,6 +1,6 @@
 :root {
   color: #1f2937;
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: #f3f4f6;
 }
 
@@ -79,7 +79,7 @@ button:disabled {
   background: #eff6ff;
 }
 
-.tool-tab[aria-selected="true"] {
+.tool-tab[aria-selected='true'] {
   color: #ffffff;
   background: #2563eb;
 }
@@ -222,7 +222,7 @@ button:disabled {
 }
 
 .torrent-item:hover,
-.torrent-item[aria-pressed="true"] {
+.torrent-item[aria-pressed='true'] {
   border-color: #2563eb;
   background: #eff6ff;
 }

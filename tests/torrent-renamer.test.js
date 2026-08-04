@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  buildRenamePreview,
-  createTorrentRenamerTool,
-  filterTorrents,
-  splitTorrentPath
-} from '../frontend/torrent-renamer.js';
+import { buildRenamePreview, createTorrentRenamerTool, filterTorrents, splitTorrentPath } from '../frontend/torrent-renamer.js';
 import { createFakeDocument, findElements } from './helpers/fake-dom.js';
 
 const createToolFixture = ({ requestTorrents, requestTorrentFiles, renameTorrentFile } = {}) => {
@@ -59,10 +54,7 @@ test('splitTorrentPath 从最后一个路径分隔符拆分路径', () => {
 });
 
 test('仅替换最后文件名并保留目录', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: '目录/S01E01.old.mkv' }],
-    { matchRegex: '\\.old', replaceRegex: '', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: '目录/S01E01.old.mkv' }], { matchRegex: '\\.old', replaceRegex: '', flags: 'g' });
 
   assert.equal(preview.error, null);
   assert.equal(preview.items[0].index, 0);
@@ -72,19 +64,13 @@ test('仅替换最后文件名并保留目录', () => {
 });
 
 test('Windows 风格源路径仅替换最后的文件名', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: '目录\\old.mkv' }],
-    { matchRegex: '^old', replaceRegex: 'new', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: '目录\\old.mkv' }], { matchRegex: '^old', replaceRegex: 'new', flags: 'g' });
 
   assert.equal(preview.items[0].newPath, '目录\\new.mkv');
 });
 
 test('支持捕获组和忽略大小写', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'SHOW.01.MKV' }],
-    { matchRegex: 'show\\.(\\d+)', replaceRegex: 'Episode-$1', flags: 'gi' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'SHOW.01.MKV' }], { matchRegex: 'show\\.(\\d+)', replaceRegex: 'Episode-$1', flags: 'gi' });
 
   assert.equal(preview.items[0].newFileName, 'Episode-01.MKV');
 });
@@ -98,7 +84,10 @@ test('每个文件的替换重新使用正则状态', () => {
     { matchRegex: '^old', replaceRegex: 'new', flags: 'y' }
   );
 
-  assert.deepEqual(preview.items.map(item => item.newFileName), ['new.first.mkv', 'new.second.mkv']);
+  assert.deepEqual(
+    preview.items.map(item => item.newFileName),
+    ['new.first.mkv', 'new.second.mkv']
+  );
 });
 
 test('全局正则不会污染后续文件的替换状态', () => {
@@ -110,14 +99,14 @@ test('全局正则不会污染后续文件的替换状态', () => {
     { matchRegex: '\\.old', replaceRegex: '', flags: 'g' }
   );
 
-  assert.deepEqual(preview.items.map(item => item.newFileName), ['first.mkv', 'second.mkv']);
+  assert.deepEqual(
+    preview.items.map(item => item.newFileName),
+    ['first.mkv', 'second.mkv']
+  );
 });
 
 test('未匹配正则的文件不可保存', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'episode.mkv' }],
-    { matchRegex: '\\.old', replaceRegex: '', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: '\\.old', replaceRegex: '', flags: 'g' });
 
   assert.equal(preview.items[0].isValid, false);
   assert.equal(preview.items[0].isSelected, false);
@@ -125,10 +114,7 @@ test('未匹配正则的文件不可保存', () => {
 });
 
 test('替换后没有变化的文件不可保存', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'episode.mkv' }],
-    { matchRegex: 'episode', replaceRegex: 'episode', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: 'episode', replaceRegex: 'episode', flags: 'g' });
 
   assert.equal(preview.items[0].isValid, false);
   assert.equal(preview.items[0].isSelected, false);
@@ -137,10 +123,7 @@ test('替换后没有变化的文件不可保存', () => {
 
 for (const invalidName of ['', '.', '..']) {
   test(`替换为无效文件名“${invalidName || '空字符串'}”时不可保存`, () => {
-    const preview = buildRenamePreview(
-      [{ index: 0, name: 'episode.mkv' }],
-      { matchRegex: 'episode\\.mkv', replaceRegex: invalidName, flags: 'g' }
-    );
+    const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: 'episode\\.mkv', replaceRegex: invalidName, flags: 'g' });
 
     assert.equal(preview.items[0].isValid, false);
     assert.equal(preview.items[0].isSelected, false);
@@ -150,10 +133,7 @@ for (const invalidName of ['', '.', '..']) {
 
 for (const invalidName of ['目录/episode.mkv', '目录\\\\episode.mkv']) {
   test(`替换后文件名含路径分隔符“${invalidName}”时不可保存`, () => {
-    const preview = buildRenamePreview(
-      [{ index: 0, name: 'episode.mkv' }],
-      { matchRegex: 'episode\\.mkv', replaceRegex: invalidName, flags: 'g' }
-    );
+    const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: 'episode\\.mkv', replaceRegex: invalidName, flags: 'g' });
 
     assert.equal(preview.items[0].isValid, false);
     assert.equal(preview.items[0].isSelected, false);
@@ -192,30 +172,21 @@ test('目标路径已被当前种子中的另一文件占用时不可保存', ()
 });
 
 test('无效正则清空预览并返回错误', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'episode.mkv' }],
-    { matchRegex: '[', replaceRegex: '', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: '[', replaceRegex: '', flags: 'g' });
 
   assert.equal(preview.items.length, 0);
   assert.match(preview.error, /Invalid regular expression/);
 });
 
 test('空正则返回明确错误且不产生可保存预览', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: 'episode.mkv' }],
-    { matchRegex: '', replaceRegex: 'prefix-', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: 'episode.mkv' }], { matchRegex: '', replaceRegex: 'prefix-', flags: 'g' });
 
   assert.equal(preview.items.length, 0);
   assert.match(preview.error, /不能为空/);
 });
 
 test('源路径以分隔符结尾时不允许通过空 basename 创建文件名', () => {
-  const preview = buildRenamePreview(
-    [{ index: 0, name: '目录/' }],
-    { matchRegex: '^$', replaceRegex: 'created.mkv', flags: 'g' }
-  );
+  const preview = buildRenamePreview([{ index: 0, name: '目录/' }], { matchRegex: '^$', replaceRegex: 'created.mkv', flags: 'g' });
 
   assert.equal(preview.items[0].newFileName, '');
   assert.equal(preview.items[0].newPath, '目录/');
@@ -252,16 +223,25 @@ test('initialize 加载 Torrent，支持名称和 hash 搜索、单选及即时�
   await tool.initialize();
 
   assert.equal(torrentRequestCount, 1);
-  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['Show Oneabc123', 'Movie Twodef456']);
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['Show Oneabc123', 'Movie Twodef456']
+  );
   assert.equal(findById(app, 'regex-flags').value, 'g');
 
   const searchInput = findById(app, 'torrent-search');
   searchInput.value = 'SHOW';
   searchInput.dispatch('input');
-  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['Show Oneabc123']);
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['Show Oneabc123']
+  );
   searchInput.value = 'F456';
   searchInput.dispatch('input');
-  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['Movie Twodef456']);
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['Movie Twodef456']
+  );
 
   searchInput.value = '';
   searchInput.dispatch('input');
@@ -297,7 +277,10 @@ test('initialize 加载 Torrent，支持名称和 hash 搜索、单选及即时�
   assert.equal(previewCheckboxes[0].checked, true);
   assert.equal(previewCheckboxes[1].checked, false);
   findById(app, 'clear-selected-renames').dispatch('click');
-  assert.equal(findPreviewCheckboxes(app).every(checkbox => !checkbox.checked), true);
+  assert.equal(
+    findPreviewCheckboxes(app).every(checkbox => !checkbox.checked),
+    true
+  );
 
   await tool.refresh();
   assert.equal(torrentRequestCount, 2);
@@ -314,11 +297,7 @@ test('切换 Torrent 时迟到的文件响应不会覆盖当前选择', async ()
       { name: 'First', hash: 'first-hash' },
       { name: 'Second', hash: 'second-hash' }
     ],
-    requestTorrentFiles: hash => (
-      hash === 'first-hash'
-        ? firstFiles
-        : Promise.resolve([{ index: 0, name: 'second.old.mkv' }])
-    )
+    requestTorrentFiles: hash => (hash === 'first-hash' ? firstFiles : Promise.resolve([{ index: 0, name: 'second.old.mkv' }]))
   });
   await tool.initialize();
 
@@ -390,17 +369,16 @@ test('并发 refresh 逆序完成时迟到响应不会覆盖较新的 Torrent �
   olderRefresh.resolve([{ name: 'Stale', hash: 'stale-hash' }]);
   await olderPromise;
 
-  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['Newestnewest-hash']);
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['Newestnewest-hash']
+  );
   assert.equal(findById(app, 'rename-status').textContent.includes('已加载 1 个 Torrent'), true);
 });
 
 test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件和预览状态', async () => {
   let torrentRequestCount = 0;
-  const torrentResponses = [
-    [{ name: 'Old Name', hash: 'show-hash' }],
-    [{ name: 'New Name', hash: 'show-hash' }],
-    []
-  ];
+  const torrentResponses = [[{ name: 'Old Name', hash: 'show-hash' }], [{ name: 'New Name', hash: 'show-hash' }], []];
   const { app, tool } = createToolFixture({
     requestTorrents: async () => torrentResponses[torrentRequestCount++],
     requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
@@ -412,7 +390,10 @@ test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件�
   matchInput.dispatch('input');
 
   await tool.refresh();
-  assert.deepEqual(findTorrentButtons(app).map(button => button.textContent), ['New Nameshow-hash']);
+  assert.deepEqual(
+    findTorrentButtons(app).map(button => button.textContent),
+    ['New Nameshow-hash']
+  );
   assert.equal(findTorrentButtons(app)[0].getAttribute('aria-pressed'), 'true');
   assert.equal(findPreviewCheckboxes(app)[0].checked, true);
 
@@ -510,7 +491,10 @@ test('保存有效勾选项时严格串行执行，忙碌期间禁用控件并�
   previewCheckboxes[1].dispatch('change');
 
   const savePromise = findById(app, 'save-renames').dispatch('click').listenerResult;
-  assert.deepEqual(renameCalls.map(call => call.oldPath), ['a.old.mkv']);
+  assert.deepEqual(
+    renameCalls.map(call => call.oldPath),
+    ['a.old.mkv']
+  );
   assert.equal(findTorrentButtons(app)[0].disabled, true);
   assert.equal(findById(app, 'torrent-search').disabled, true);
   assert.equal(matchInput.disabled, true);
@@ -520,7 +504,10 @@ test('保存有效勾选项时严格串行执行，忙碌期间禁用控件并�
   assert.equal(findById(app, 'save-renames').disabled, true);
   assert.equal(findById(app, 'select-all-renames').disabled, true);
   assert.equal(findById(app, 'clear-selected-renames').disabled, true);
-  assert.equal(findPreviewCheckboxes(app).every(checkbox => checkbox.disabled), true);
+  assert.equal(
+    findPreviewCheckboxes(app).every(checkbox => checkbox.disabled),
+    true
+  );
 
   releaseFirstRename();
   await savePromise;
@@ -564,7 +551,10 @@ test('保存遇到首个错误后停止，刷新文件并显示成功数量和�
 
   await findById(app, 'save-renames').dispatch('click').listenerResult;
 
-  assert.deepEqual(renameCalls.map(call => call.oldPath), ['a.old.mkv', 'b.old.mkv']);
+  assert.deepEqual(
+    renameCalls.map(call => call.oldPath),
+    ['a.old.mkv', 'b.old.mkv']
+  );
   assert.equal(fileRequestCount, 2);
   const statusText = findById(app, 'rename-status').textContent;
   assert.equal(statusText.includes('成功 1 项'), true);

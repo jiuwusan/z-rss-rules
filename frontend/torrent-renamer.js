@@ -4,10 +4,15 @@ export const filterTorrents = (torrents, query) => {
     return torrents;
   }
 
-  return torrents.filter(torrent => (
-    String(torrent.name ?? '').toLowerCase().includes(normalizedQuery)
-    || String(torrent.hash ?? '').toLowerCase().includes(normalizedQuery)
-  ));
+  return torrents.filter(
+    torrent =>
+      String(torrent.name ?? '')
+        .toLowerCase()
+        .includes(normalizedQuery) ||
+      String(torrent.hash ?? '')
+        .toLowerCase()
+        .includes(normalizedQuery)
+  );
 };
 
 export const splitTorrentPath = path => {
@@ -54,12 +59,7 @@ export const buildRenamePreview = (files, { matchRegex, replaceRegex, flags }) =
     const isMatched = createRegex().test(oldFileName);
     const newFileName = oldFileName.replace(createRegex(), replaceRegex);
     const newPath = `${directory}${newFileName}`;
-    const isInvalidFileName = (
-      newFileName === ''
-      || newFileName === '.'
-      || newFileName === '..'
-      || /[\\/]/u.test(newFileName)
-    );
+    const isInvalidFileName = newFileName === '' || newFileName === '.' || newFileName === '..' || /[\\/]/u.test(newFileName);
     const isChanged = newFileName !== oldFileName;
     const isValid = isMatched && isChanged && !isInvalidFileName;
     let status = '可重命名';

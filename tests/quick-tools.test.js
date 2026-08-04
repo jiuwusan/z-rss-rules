@@ -101,9 +101,7 @@ test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请�
     }
 
     ruleRequestCount += 1;
-    return ruleRequestCount === 1
-      ? { ok: false, status: 403 }
-      : { ok: true, status: 200, json: async () => expectedRules };
+    return ruleRequestCount === 1 ? { ok: false, status: 403 } : { ok: true, status: 200, json: async () => expectedRules };
   };
   const api = await initializeRealClients({ document, fetchImpl });
 
@@ -112,11 +110,10 @@ test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请�
   const rules = await rulesPromise;
 
   assert.deepEqual(rules, expectedRules);
-  assert.deepEqual(fetchCalls.map(call => call.url), [
-    '/api/v2/rss/rules',
-    '/api/v2/auth/login',
-    '/api/v2/rss/rules'
-  ]);
+  assert.deepEqual(
+    fetchCalls.map(call => call.url),
+    ['/api/v2/rss/rules', '/api/v2/auth/login', '/api/v2/rss/rules']
+  );
   assert.strictEqual(fetchCalls[0].options, fetchCalls[2].options);
   assert.deepEqual(fetchCalls[0].options, { credentials: 'include' });
 });
@@ -141,11 +138,10 @@ test('真实 auth 和 API 组合在 setRule 403 登录后重放同一表单请�
   await submitLogin(document);
   await savePromise;
 
-  assert.deepEqual(fetchCalls.map(call => call.url), [
-    '/api/v2/rss/setRule',
-    '/api/v2/auth/login',
-    '/api/v2/rss/setRule'
-  ]);
+  assert.deepEqual(
+    fetchCalls.map(call => call.url),
+    ['/api/v2/rss/setRule', '/api/v2/auth/login', '/api/v2/rss/setRule']
+  );
   assert.strictEqual(fetchCalls[0].options, fetchCalls[2].options);
   assert.strictEqual(fetchCalls[0].options.body, fetchCalls[2].options.body);
   assert.ok(fetchCalls[0].options.body instanceof URLSearchParams);

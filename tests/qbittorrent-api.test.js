@@ -26,10 +26,7 @@ test('requestRules 使用凭据读取 RSS 规则', async () => {
 test('requestRules 失败时抛出读取规则中文错误', async () => {
   const { authenticatedFetch } = createAuthenticatedFetch({ ok: false, status: 500 });
 
-  await assert.rejects(
-    createQbittorrentApi(authenticatedFetch).requestRules(),
-    /读取规则失败：HTTP 500/
-  );
+  await assert.rejects(createQbittorrentApi(authenticatedFetch).requestRules(), /读取规则失败：HTTP 500/);
 });
 
 test('setRule 以 URL 编码表单提交完整规则定义', async () => {
@@ -48,10 +45,7 @@ test('setRule 以 URL 编码表单提交完整规则定义', async () => {
 test('setRule 失败时抛出包含规则名的中文错误', async () => {
   const { authenticatedFetch } = createAuthenticatedFetch({ ok: false, status: 400 });
 
-  await assert.rejects(
-    createQbittorrentApi(authenticatedFetch).setRule('HDSWEB', {}),
-    /保存规则“HDSWEB”失败：HTTP 400/
-  );
+  await assert.rejects(createQbittorrentApi(authenticatedFetch).setRule('HDSWEB', {}), /保存规则“HDSWEB”失败：HTTP 400/);
 });
 
 test('requestTorrents 按添加时间倒序读取种子', async () => {
@@ -68,10 +62,7 @@ test('requestTorrents 按添加时间倒序读取种子', async () => {
 test('requestTorrents 失败时抛出读取种子中文错误', async () => {
   const { authenticatedFetch } = createAuthenticatedFetch({ ok: false, status: 503 });
 
-  await assert.rejects(
-    createQbittorrentApi(authenticatedFetch).requestTorrents(),
-    /读取种子失败：HTTP 503/
-  );
+  await assert.rejects(createQbittorrentApi(authenticatedFetch).requestTorrents(), /读取种子失败：HTTP 503/);
 });
 
 test('requestTorrentFiles 使用 URLSearchParams 编码种子哈希', async () => {
@@ -88,10 +79,7 @@ test('requestTorrentFiles 使用 URLSearchParams 编码种子哈希', async () =
 test('requestTorrentFiles 失败时抛出包含哈希的中文错误', async () => {
   const { authenticatedFetch } = createAuthenticatedFetch({ ok: false, status: 404 });
 
-  await assert.rejects(
-    createQbittorrentApi(authenticatedFetch).requestTorrentFiles('hash value'),
-    /读取种子 hash value 的文件失败：HTTP 404/
-  );
+  await assert.rejects(createQbittorrentApi(authenticatedFetch).requestTorrentFiles('hash value'), /读取种子 hash value 的文件失败：HTTP 404/);
 });
 
 test('renameTorrentFile 以 URL 编码表单重命名文件', async () => {
@@ -110,8 +98,5 @@ test('renameTorrentFile 以 URL 编码表单重命名文件', async () => {
 test('renameTorrentFile 失败时抛出包含路径的中文错误', async () => {
   const { authenticatedFetch } = createAuthenticatedFetch({ ok: false, status: 409 });
 
-  await assert.rejects(
-    createQbittorrentApi(authenticatedFetch).renameTorrentFile('abc', '目录/旧.mkv', '目录/新.mkv'),
-    /重命名文件“目录\/旧.mkv”为“目录\/新.mkv”失败：HTTP 409/
-  );
+  await assert.rejects(createQbittorrentApi(authenticatedFetch).renameTorrentFile('abc', '目录/旧.mkv', '目录/新.mkv'), /重命名文件“目录\/旧.mkv”为“目录\/新.mkv”失败：HTTP 409/);
 });
