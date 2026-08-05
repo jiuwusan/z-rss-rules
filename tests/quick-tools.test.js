@@ -95,8 +95,14 @@ test('Quick Tools 样式包含侧边导航、重命名弹窗、窄屏布局和�
   assert.match(css, /\.login-dialog\s*\{/);
   assert.match(css, /\.login-form\s*\{[^}]*margin:\s*0;/s);
   assert.match(css, /\.rename-preview-select\s*\{[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*margin:\s*0;/s);
-  assert.match(css, /\.rules-list\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*1fr;/s);
-  assert.doesNotMatch(css, /\.rules-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  const rulesListColumnRules = Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).filter(([, selector, declarations]) => (
+    selector.includes('.rules-list') && declarations.includes('grid-template-columns')
+  ));
+
+  assert.equal(rulesListColumnRules.length, 1);
+  const [, , rulesListDeclarations] = rulesListColumnRules[0];
+  assert.match(rulesListDeclarations, /grid-template-columns\s*:\s*1fr\s*;/);
+  assert.doesNotMatch(rulesListDeclarations, /repeat\s*\(/);
 });
 
 test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请求', async () => {
