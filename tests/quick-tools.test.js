@@ -9,6 +9,93 @@ const CURRENT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const QUICK_TOOLS_HTML_PATH = path.join(CURRENT_DIRECTORY, '..', 'frontend', 'quick-tools.html');
 const QUICK_TOOLS_CSS_PATH = path.join(CURRENT_DIRECTORY, '..', 'frontend', 'quick-tools.css');
 
+const stripCssComments = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+const splitSelectors = selectorText => {
+  const selectors = [];
+  let parenthesisDepth = 0;
+  let bracketDepth = 0;
+  let selectorStart = 0;
+
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (character === '(') parenthesisDepth += 1;
+    if (character === ')') parenthesisDepth -= 1;
+    if (character === '[') bracketDepth += 1;
+    if (character === ']') bracketDepth -= 1;
+    if (character === ',' && parenthesisDepth === 0 && bracketDepth === 0) {
+      selectors.push(selectorText.slice(selectorStart, index).trim());
+      selectorStart = index + 1;
+    }
+  }
+
+  selectors.push(selectorText.slice(selectorStart).trim());
+  return selectors;
+};
+
+const getRightmostCompoundSelector = selector => {
+  const trimmedSelector = selector.trim();
+  let parenthesisDepth = 0;
+  let bracketDepth = 0;
+  let compoundStart = 0;
+
+  for (let index = 0; index < trimmedSelector.length; index += 1) {
+    const character = trimmedSelector[index];
+    if (character === '(') parenthesisDepth += 1;
+    if (character === ')') parenthesisDepth -= 1;
+    if (character === '[') bracketDepth += 1;
+    if (character === ']') bracketDepth -= 1;
+    if (parenthesisDepth === 0 && bracketDepth === 0 && (character === '>' || character === '+' || character === '~' || /\s/.test(character))) {
+      compoundStart = index + 1;
+    }
+  }
+
+  return trimmedSelector.slice(compoundStart).trim();
+};
+
+const stripSelectorArguments = selector => {
+  let result = '';
+  let parenthesisDepth = 0;
+  let bracketDepth = 0;
+
+  for (const character of selector) {
+    if (character === '(') {
+      parenthesisDepth += 1;
+      continue;
+    }
+    if (character === ')') {
+      parenthesisDepth -= 1;
+      continue;
+    }
+    if (character === '[') {
+      bracketDepth += 1;
+      continue;
+    }
+    if (character === ']') {
+      bracketDepth -= 1;
+      continue;
+    }
+    if (parenthesisDepth === 0 && bracketDepth === 0) result += character;
+  }
+
+  return result;
+};
+
+const isRulesListTargetSelector = selector => {
+  const rightmostCompoundSelector = getRightmostCompoundSelector(selector);
+  const selectorWithoutArguments = stripSelectorArguments(rightmostCompoundSelector);
+  return /(^|[^a-zA-Z0-9_-])\.rules-list(?![a-zA-Z0-9_-])/.test(selectorWithoutArguments);
+};
+
+const extractDeclarations = declarations => Array.from(
+  declarations.matchAll(/(?:^|;)\s*([a-z-]+)\s*:\s*([^;}]+?)(?=\s*;|\s*$)/gi),
+  ([, property, value]) => ({ property: property.toLowerCase(), value: value.trim() })
+);
+
+const getRulesListDeclarations = css => Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
+  .filter(([, selector]) => splitSelectors(selector).some(isRulesListTargetSelector))
+  .flatMap(([, , declarations]) => extractDeclarations(declarations));
+
 const createPageFixture = () => {
   const { app, document } = createFakeDocument();
   const tabList = document.createElement('div');
@@ -81,7 +168,7 @@ test('Quick Tools HTML 提供标题、样式、模块入口和两个工具面板
 });
 
 test('Quick Tools 样式包含侧边导航、重命名弹窗、窄屏布局和登录弹窗样式', () => {
-  const css = fs.readFileSync(QUICK_TOOLS_CSS_PATH, 'utf8');
+  const css = stripCssComments(fs.readFileSync(QUICK_TOOLS_CSS_PATH, 'utf8'));
 
   assert.match(css, /\.quick-tools-layout\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*220px\s+minmax\(0,\s*1fr\);/s);
   assert.match(css, /\.tool-tabs\s*\{[^}]*flex-direction:\s*column;/s);
@@ -95,19 +182,16 @@ test('Quick Tools 样式包含侧边导航、重命名弹窗、窄屏布局和�
   assert.match(css, /\.login-dialog\s*\{/);
   assert.match(css, /\.login-form\s*\{[^}]*margin:\s*0;/s);
   assert.match(css, /\.rename-preview-select\s*\{[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*margin:\s*0;/s);
-  const rulesListColumnRules = Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).filter(([, selector, declarations]) => (
-    selector.includes('.rules-list') && declarations.includes('grid-template-columns')
-  ));
+  const rulesListDeclarations = getRulesListDeclarations(css);
+  const displayValues = rulesListDeclarations.filter(({ property }) => property === 'display').map(({ value }) => value);
+  const columnValues = rulesListDeclarations.filter(({ property }) => property === 'grid-template-columns').map(({ value }) => value);
+  const gridShorthandDeclarations = rulesListDeclarations.filter(({ property }) => property === 'grid-template' || property === 'grid');
 
-  assert.equal(rulesListColumnRules.length, 1);
-  const [, , rulesListDeclarations] = rulesListColumnRules[0];
-  const rulesListColumnValues = Array.from(
-    rulesListDeclarations.matchAll(/grid-template-columns\s*:\s*([^;}]+?)(?:\s*;|\s*$)/g),
-    ([, value]) => value.trim()
-  );
-
-  assert.equal(rulesListColumnValues.length, 1);
-  assert.equal(rulesListColumnValues[0], '1fr');
+  assert.equal(displayValues.length, 1);
+  assert.equal(displayValues[0], 'grid');
+  assert.equal(columnValues.length, 1);
+  assert.equal(columnValues[0], '1fr');
+  assert.equal(gridShorthandDeclarations.length, 0);
 });
 
 test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请求', async () => {
