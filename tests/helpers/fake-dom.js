@@ -19,6 +19,17 @@ export class FakeElement {
     return this.ownTextContent + this.children.map(child => child.textContent).join('');
   }
 
+  get isConnected() {
+    let currentElement = this;
+    while (currentElement) {
+      if (currentElement === this.ownerDocument?.body) {
+        return true;
+      }
+      currentElement = currentElement.parentElement;
+    }
+    return false;
+  }
+
   set textContent(value) {
     this.ownTextContent = String(value);
     this.children = [];
@@ -94,6 +105,17 @@ export class FakeElement {
       return event;
     }
     event.listenerResult = this.eventListeners[type]?.(event);
+    if (type === 'keydown') {
+      let parentElement = this.parentElement;
+      while (parentElement) {
+        const listenerResult = parentElement.eventListeners[type]?.(event);
+        if (listenerResult !== undefined) {
+          event.listenerResult = listenerResult;
+        }
+        parentElement = parentElement.parentElement;
+      }
+      this.ownerDocument?.dispatchEvent(type, event);
+    }
     return event;
   }
 }
@@ -126,6 +148,13 @@ export const createFakeDocument = () => {
         delete documentEventListeners[type];
       }
     },
+    dispatchEvent(type, event) {
+      const listenerResult = documentEventListeners[type]?.(event);
+      if (listenerResult !== undefined) {
+        event.listenerResult = listenerResult;
+      }
+      return event;
+    },
     dispatch(type, properties = {}) {
       const event = {
         defaultPrevented: false,
@@ -134,8 +163,7 @@ export const createFakeDocument = () => {
           this.defaultPrevented = true;
         }
       };
-      event.listenerResult = documentEventListeners[type]?.(event);
-      return event;
+      return this.dispatchEvent(type, event);
     }
   };
   const body = new FakeElement('body', document);

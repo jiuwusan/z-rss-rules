@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createAuthClient } from '../frontend/auth.js';
 import { buildRenamePreview, createTorrentRenamerTool, filterTorrents, splitTorrentPath } from '../frontend/torrent-renamer.js';
-import { createFakeDocument, findElements } from './helpers/fake-dom.js';
+import { createFakeDocument, findElements, waitForCondition } from './helpers/fake-dom.js';
 
 const createToolFixture = ({ requestTorrents, requestTorrentFiles, renameTorrentFile } = {}) => {
   const { app, document } = createFakeDocument();
@@ -106,6 +107,113 @@ test('列表刷新后关闭弹窗恢复焦点到刷新后的重命名按钮', as
   assert.equal(findPreviewRows(app).length, 0);
 });
 
+test('登录弹窗处理 Escape 后只关闭登录层，不穿透关闭重命名弹窗', async () => {
+  const { app, body, document } = createFakeDocument();
+  const tool = createTorrentRenamerTool({
+    root: app,
+    documentRef: document,
+    api: {
+      requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+      requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }],
+      renameTorrentFile: async () => {}
+    }
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  const authClient = createAuthClient({
+    documentRef: document,
+    fetchImpl: async () => ({ ok: false, status: 403 })
+  });
+  const responsePromise = authClient.authenticatedFetch('/api/v2/rss/rules');
+  await waitForCondition(() => findElements(body, element => element.className === 'login-overlay')[0]);
+  const loginOverlay = findElements(body, element => element.className === 'login-overlay')[0];
+
+  const escapeEvent = loginOverlay.dispatch('keydown', { key: 'Escape' });
+
+  await assert.rejects(responsePromise, /已取消登录/);
+  assert.equal(escapeEvent.defaultPrevented, true);
+  assert.equal(loginOverlay.hidden, true);
+  assert.equal(findById(app, 'torrent-rename-dialog') !== undefined, true);
+});
+
+test('登录忙碌期间 Escape 不关闭底层重命名弹窗', async () => {
+  const { app, body, document } = createFakeDocument();
+  const tool = createTorrentRenamerTool({
+    root: app,
+    documentRef: document,
+    api: {
+      requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+      requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }],
+      renameTorrentFile: async () => {}
+    }
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  const pendingLogin = createDeferred();
+  let requestCount = 0;
+  const authClient = createAuthClient({
+    documentRef: document,
+    fetchImpl: async url => {
+      if (url === '/api/v2/auth/login') {
+        return pendingLogin.promise;
+      }
+      requestCount += 1;
+      return requestCount === 1 ? { ok: false, status: 403 } : { ok: true, status: 200 };
+    }
+  });
+  const responsePromise = authClient.authenticatedFetch('/api/v2/rss/rules');
+  await waitForCondition(() => findElements(body, element => element.className === 'login-form')[0]);
+  const loginForm = findElements(body, element => element.className === 'login-form')[0];
+  const loginOverlay = findElements(body, element => element.className === 'login-overlay')[0];
+  findElements(body, element => element.id === 'login-username')[0].value = 'tester';
+  findElements(body, element => element.id === 'login-password')[0].value = 'secret';
+  const submitPromise = loginForm.dispatch('submit').listenerResult;
+
+  const escapeEvent = loginOverlay.dispatch('keydown', { key: 'Escape' });
+
+  assert.equal(escapeEvent.defaultPrevented, false);
+  assert.equal(app.inert, true);
+  assert.equal(findById(app, 'torrent-rename-dialog') !== undefined, true);
+  pendingLogin.resolve({ ok: true, status: 200 });
+  await submitPromise;
+  assert.equal((await responsePromise).status, 200);
+});
+
+test('保存期间登录层接管 Tab 时不会把焦点拉回底层重命名弹窗', async () => {
+  const { app, body, document } = createFakeDocument();
+  const authClient = createAuthClient({
+    documentRef: document,
+    fetchImpl: async () => ({ ok: false, status: 403 })
+  });
+  const tool = createTorrentRenamerTool({
+    root: app,
+    documentRef: document,
+    api: {
+      requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+      requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }],
+      renameTorrentFile: async () => {
+        await authClient.authenticatedFetch('/api/v2/torrents/renameFile');
+      }
+    }
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  findById(app, 'match-regex').value = '\\.old';
+  findById(app, 'match-regex').dispatch('input');
+
+  const savePromise = findById(app, 'save-renames').dispatch('click').listenerResult;
+  await waitForCondition(() => findElements(body, element => element.className === 'login-overlay')[0]);
+  const loginOverlay = findElements(body, element => element.className === 'login-overlay')[0];
+  const usernameInput = findElements(body, element => element.id === 'login-username')[0];
+  const tabEvent = loginOverlay.dispatch('keydown', { key: 'Tab' });
+
+  assert.equal(app.inert, true);
+  assert.equal(tabEvent.defaultPrevented, false);
+  assert.equal(document.activeElement, usernameInput);
+  findElements(body, element => element.id === 'login-cancel-button')[0].dispatch('click');
+  await savePromise;
+});
+
 test('关闭后迟到的文件响应不会写入新弹窗', async () => {
   const firstFiles = createDeferred();
   const { app, tool } = createToolFixture({
@@ -161,6 +269,29 @@ test('保存期间禁止关闭且成功后弹窗保持打开并刷新文件', as
   assert.equal(fileRequestCount, 2);
   assert.equal(app.textContent.includes('episode.old.mkv'), false);
   assert.equal(app.textContent.includes('成功 1 项'), true);
+});
+
+test('保存挂起期间焦点停留在弹窗面板且 Tab 不会逃出 aria-modal', async () => {
+  const pendingRename = createDeferred();
+  const { app, document, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }],
+    renameTorrentFile: () => pendingRename.promise
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  findById(app, 'match-regex').value = '\\.old';
+  findById(app, 'match-regex').dispatch('input');
+
+  const savePromise = findById(app, 'save-renames').dispatch('click').listenerResult;
+  const dialog = findById(app, 'torrent-rename-dialog');
+  const tabEvent = document.dispatch('keydown', { key: 'Tab' });
+
+  assert.equal(dialog.getAttribute('tabindex'), '-1');
+  assert.equal(document.activeElement, dialog);
+  assert.equal(tabEvent.defaultPrevented, true);
+  pendingRename.resolve();
+  await savePromise;
 });
 
 test('splitTorrentPath 仅从最后一个正斜杠拆分路径', () => {
@@ -652,6 +783,8 @@ test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件�
     findTorrentItems(app).map(item => item.textContent),
     ['New Nameshow-hash重命名']
   );
+  assert.equal(findById(app, 'torrent-rename-dialog-title').textContent, 'New Name');
+  assert.equal(findElements(app, element => element.className === 'torrent-dialog-hash')[0].textContent, 'show-hash');
   assert.equal(findPreviewCheckboxes(app)[0].checked, true);
 
   await tool.refresh();
@@ -660,6 +793,22 @@ test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件�
   assert.equal(findById(app, 'match-regex').disabled, false);
   assert.equal(findById(app, 'save-renames').disabled, true);
   assert.equal(findById(app, 'rename-status').textContent.includes('当前选择已不存在'), true);
+});
+
+test('选中 Torrent 从刷新列表消失后关闭弹窗，焦点回到搜索框', async () => {
+  let torrentRequestCount = 0;
+  const { app, document, tool } = createToolFixture({
+    requestTorrents: async () => (torrentRequestCount++ === 0 ? [{ name: 'Show', hash: 'show-hash' }] : []),
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+
+  await tool.refresh();
+  findById(app, 'close-rename-dialog').dispatch('click');
+
+  assert.equal(findById(app, 'torrent-rename-dialog'), undefined);
+  assert.equal(document.activeElement, findById(app, 'torrent-search'));
 });
 
 test('Torrent 列表刷新失败时保留已有列表、选择、预览和可操作状态，且不覆盖弹窗状态', async () => {

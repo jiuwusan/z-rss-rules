@@ -139,7 +139,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let saveButton = null;
   let statusElement = null;
   let dialogElement = null;
+  let dialogPanelElement = null;
   let dialogTriggerButton = null;
+  let dialogTitleElement = null;
+  let dialogHashElement = null;
   let dialogStatusElement = null;
   let headerCloseButton = null;
   let footerCloseButton = null;
@@ -155,6 +158,15 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   const setTorrentListStatus = (message, isError = false) => {
     statusElement.textContent = message;
     statusElement.className = isError ? 'status-message status-error' : 'status-message';
+  };
+
+  const updateDialogMetadata = () => {
+    if (!dialogTitleElement || !dialogHashElement) {
+      return;
+    }
+
+    dialogTitleElement.textContent = selectedTorrent?.name ?? 'Torrent 文件重命名';
+    dialogHashElement.textContent = selectedTorrent?.hash ?? '';
   };
 
   const getSelectedItems = () => preview.items.filter(item => item.isValid && item.isSelected);
@@ -340,6 +352,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     clearSelectedButton = null;
     refreshButton = null;
     saveButton = null;
+    dialogPanelElement = null;
+    dialogTitleElement = null;
+    dialogHashElement = null;
     dialogStatusElement = null;
     headerCloseButton = null;
     footerCloseButton = null;
@@ -350,23 +365,29 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       return;
     }
 
-    const triggerButton = dialogTriggerButton;
+    const returnFocusElement = [dialogTriggerButton, searchInput, refreshTorrentsButton].find(
+      element => element?.isConnected && !element.disabled
+    );
     fileRequestVersion += 1;
     documentRef.removeEventListener('keydown', handleDialogKeydown);
     dialogElement.remove();
     dialogElement = null;
     dialogTriggerButton = null;
     resetRenameState();
-    triggerButton?.focus();
+    returnFocusElement?.focus();
   };
 
   const handleDialogKeydown = event => {
+    if (!['Escape', 'Tab'].includes(event.key)) {
+      return;
+    }
+    if (event.defaultPrevented || documentRef.getElementById('app')?.inert) {
+      return;
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       closeRenameDialog();
-      return;
-    }
-    if (event.key !== 'Tab') {
       return;
     }
 
@@ -383,6 +404,11 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     ].filter(element => element && !element.disabled);
     const firstElement = focusableElements[0];
     const lastElement = focusableElements.at(-1);
+    if (!firstElement) {
+      event.preventDefault();
+      dialogPanelElement?.focus();
+      return;
+    }
     if (event.shiftKey && documentRef.activeElement === firstElement) {
       event.preventDefault();
       lastElement.focus();
@@ -433,6 +459,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         const refreshedSelection = torrents.find(torrent => torrent.hash === selectedTorrent.hash);
         if (refreshedSelection) {
           selectedTorrent = refreshedSelection;
+          updateDialogMetadata();
         } else {
           selectedTorrent = null;
           files = [];
@@ -503,6 +530,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     isSaving = true;
     renderTorrentList();
     renderPreview();
+    dialogPanelElement?.focus();
     setRenameStatus('正在保存重命名');
 
     try {
@@ -572,10 +600,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
     dialog.setAttribute('aria-labelledby', 'torrent-rename-dialog-title');
+    dialog.setAttribute('tabindex', '-1');
     title.id = 'torrent-rename-dialog-title';
-    title.textContent = selectedTorrent?.name ?? 'Torrent 文件重命名';
     hash.className = 'torrent-dialog-hash';
-    hash.textContent = selectedTorrent?.hash ?? '';
     editor.className = 'torrent-rename-fields';
     headerCloseButton.id = 'close-rename-dialog';
     headerCloseButton.type = 'button';
@@ -643,6 +670,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     dialog.append(header, editor, previewTable, actions, dialogStatusElement);
     overlay.append(dialog);
     dialogElement = overlay;
+    dialogPanelElement = dialog;
+    dialogTitleElement = title;
+    dialogHashElement = hash;
+    updateDialogMetadata();
     root.append(overlay);
     renderPreview();
   };
