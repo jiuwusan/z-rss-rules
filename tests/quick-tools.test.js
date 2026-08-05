@@ -101,8 +101,13 @@ test('Quick Tools 样式包含侧边导航、重命名弹窗、窄屏布局和�
 
   assert.equal(rulesListColumnRules.length, 1);
   const [, , rulesListDeclarations] = rulesListColumnRules[0];
-  assert.match(rulesListDeclarations, /grid-template-columns\s*:\s*1fr\s*;/);
-  assert.doesNotMatch(rulesListDeclarations, /repeat\s*\(/);
+  const rulesListColumnValues = Array.from(
+    rulesListDeclarations.matchAll(/grid-template-columns\s*:\s*([^;}]+?)(?:\s*;|\s*$)/g),
+    ([, value]) => value.trim()
+  );
+
+  assert.equal(rulesListColumnValues.length, 1);
+  assert.equal(rulesListColumnValues[0], '1fr');
 });
 
 test('真实 auth 和 API 组合在 requestRules 403 登录后重放原 GET 请求', async () => {
