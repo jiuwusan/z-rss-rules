@@ -104,7 +104,7 @@ button:disabled {
 
 .rules-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -467,7 +467,6 @@ button:disabled {
     position: static;
   }
 
-  .rules-list,
   .torrent-rename-fields {
     grid-template-columns: 1fr;
   }
