@@ -362,6 +362,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     }
 
     const focusableElements = [
+      headerCloseButton,
       matchInput,
       replaceInput,
       flagsInput,

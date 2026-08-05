@@ -81,11 +81,15 @@ test('重命名弹窗提供语义、Escape 关闭、状态清理和焦点恢复'
 
   findById(app, 'cancel-rename-dialog').focus();
   document.dispatch('keydown', { key: 'Tab' });
-  assert.equal(document.activeElement, findById(app, 'match-regex'));
+  assert.equal(document.activeElement.id, 'close-rename-dialog');
 
-  findById(app, 'match-regex').focus();
+  findById(app, 'close-rename-dialog').focus();
   document.dispatch('keydown', { key: 'Tab', shiftKey: true });
-  assert.equal(document.activeElement, findById(app, 'cancel-rename-dialog'));
+  assert.equal(document.activeElement.id, 'cancel-rename-dialog');
+
+  findById(app, 'close-rename-dialog').focus();
+  const headerTabEvent = document.dispatch('keydown', { key: 'Tab' });
+  assert.equal(headerTabEvent.defaultPrevented, false);
 
   findById(app, 'match-regex').value = '\\.old';
   document.dispatch('keydown', { key: 'Escape' });
