@@ -17,6 +17,7 @@ const createToolFixture = ({ requestTorrents, requestTorrentFiles, renameTorrent
 const findById = (app, id) => findElements(app, element => element.id === id)[0];
 const findTorrentItems = app => findElements(app, element => element.className === 'torrent-item');
 const findRenameButtons = app => findElements(app, element => element.className === 'torrent-rename-button');
+const findRenameEditors = app => findElements(app, element => element.className === 'torrent-rename-fields');
 const findOriginalRows = app => findElements(app, element => element.className === 'rename-original-row');
 const findPreviewRows = app => findElements(app, element => element.className === 'rename-preview-row');
 const findPreviewCheckboxes = app => findElements(app, element => element.className === 'rename-preview-select');
@@ -61,6 +62,7 @@ test('Torrent 主界面只展示种子列表并通过重命名按钮请求文件
   await findRenameButtons(app)[0].dispatch('click').listenerResult;
 
   assert.deepEqual(fileRequestHashes, ['abc123']);
+  assert.equal(findRenameEditors(app).length, 1);
   assert.equal(findById(app, 'match-regex') !== undefined, true);
 });
 

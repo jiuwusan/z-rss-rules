@@ -191,16 +191,10 @@ button:disabled {
   background: #ffffff;
 }
 
-.torrent-renamer-editor {
+.torrent-rename-fields {
   display: grid;
   grid-template-columns: minmax(160px, 2fr) minmax(160px, 2fr) minmax(80px, 0.5fr);
   gap: 12px;
-  width: min(100%, 1100px);
-  max-height: calc(100vh - 48px);
-  padding: 16px;
-  overflow: auto;
-  border-radius: 8px;
-  background: #ffffff;
 }
 
 #torrent-search,
@@ -389,12 +383,6 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
-.torrent-rename-dialog .torrent-renamer-editor {
-  width: 100%;
-  max-height: none;
-  padding: 0;
-}
-
 .torrent-rename-dialog .rename-preview-table {
   overflow: auto;
 }
@@ -480,7 +468,7 @@ button:disabled {
   }
 
   .rules-list,
-  .torrent-renamer-editor {
+  .torrent-rename-fields {
     grid-template-columns: 1fr;
   }
 

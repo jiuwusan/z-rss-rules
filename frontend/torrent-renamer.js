@@ -576,7 +576,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     title.textContent = selectedTorrent?.name ?? 'Torrent 文件重命名';
     hash.className = 'torrent-dialog-hash';
     hash.textContent = selectedTorrent?.hash ?? '';
-    editor.className = 'torrent-renamer-editor';
+    editor.className = 'torrent-rename-fields';
     headerCloseButton.id = 'close-rename-dialog';
     headerCloseButton.type = 'button';
     headerCloseButton.textContent = '关闭';
