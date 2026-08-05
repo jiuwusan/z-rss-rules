@@ -183,15 +183,7 @@ button:disabled {
   background: #eff6ff;
 }
 
-.torrent-renamer-layout {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 2fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.torrent-panel,
-.torrent-renamer-editor {
+.torrent-renamer-main {
   min-width: 0;
   padding: 16px;
   border: 1px solid #d1d5db;
@@ -203,6 +195,12 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(160px, 2fr) minmax(160px, 2fr) minmax(80px, 0.5fr);
   gap: 12px;
+  width: min(100%, 1100px);
+  max-height: calc(100vh - 48px);
+  padding: 16px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 #torrent-search,
@@ -225,20 +223,24 @@ button:disabled {
 }
 
 .torrent-item {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 12px;
-  color: #1f2937;
-  text-align: left;
-  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
   border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
 }
 
-.torrent-item:hover,
-.torrent-item[aria-pressed='true'] {
-  border-color: #2563eb;
-  background: #eff6ff;
+.torrent-item-details {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.torrent-rename-button {
+  flex: 0 0 auto;
 }
 
 .torrent-name {
@@ -343,6 +345,17 @@ button:disabled {
   color: #b91c1c;
 }
 
+.torrent-rename-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(17 24 39 / 55%);
+}
+
 .login-overlay {
   position: fixed;
   inset: 0;
@@ -424,7 +437,6 @@ button:disabled {
   }
 
   .rules-list,
-  .torrent-renamer-layout,
   .torrent-renamer-editor {
     grid-template-columns: 1fr;
   }

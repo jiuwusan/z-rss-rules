@@ -138,8 +138,17 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let refreshButton = null;
   let saveButton = null;
   let statusElement = null;
+  let dialogElement = null;
+  let dialogTriggerButton = null;
+  let dialogStatusElement = null;
 
   const setStatus = (message, isError = false) => {
+    const targetElement = dialogStatusElement ?? statusElement;
+    targetElement.textContent = message;
+    targetElement.className = isError ? 'status-message status-error' : 'status-message';
+  };
+
+  const setTorrentListStatus = (message, isError = false) => {
     statusElement.textContent = message;
     statusElement.className = isError ? 'status-message status-error' : 'status-message';
   };
@@ -149,10 +158,14 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   const updateControls = () => {
     const isBusy = isSaving || isLoadingTorrents || isLoadingFiles;
     searchInput.disabled = isBusy;
+    refreshTorrentsButton.disabled = isBusy;
+    if (!dialogElement) {
+      return;
+    }
+
     matchInput.disabled = isBusy || !selectedTorrent;
     replaceInput.disabled = isBusy || !selectedTorrent;
     flagsInput.disabled = isBusy || !selectedTorrent;
-    refreshTorrentsButton.disabled = isBusy;
     refreshButton.disabled = isBusy || isLoadingFiles || !selectedTorrent;
     selectAllButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
     clearSelectedButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
@@ -162,20 +175,28 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
 
   const renderTorrentList = () => {
     const items = filterTorrents(torrents, searchQuery).map(torrent => {
-      const button = documentRef.createElement('button');
-      const name = documentRef.createElement('span');
+      const item = documentRef.createElement('article');
+      const details = documentRef.createElement('div');
+      const name = documentRef.createElement('strong');
       const hash = documentRef.createElement('span');
-      button.className = 'torrent-item';
-      button.type = 'button';
-      button.disabled = isSaving || isLoadingTorrents;
-      button.setAttribute('aria-pressed', String(torrent.hash === selectedTorrent?.hash));
+      const renameButton = documentRef.createElement('button');
+
+      item.className = 'torrent-item';
+      details.className = 'torrent-item-details';
       name.className = 'torrent-name';
       name.textContent = torrent.name ?? '';
       hash.className = 'torrent-hash';
       hash.textContent = torrent.hash ?? '';
-      button.append(name, hash);
-      button.addEventListener('click', () => selectTorrent(torrent));
-      return button;
+      renameButton.className = 'torrent-rename-button';
+      renameButton.type = 'button';
+      renameButton.textContent = '重命名';
+      renameButton.disabled = isLoadingTorrents || isSaving;
+      renameButton.setAttribute('aria-label', `重命名 ${torrent.name ?? torrent.hash ?? ''}`);
+      renameButton.addEventListener('click', () => openRenameDialog(torrent, renameButton));
+
+      details.append(name, hash);
+      item.append(details, renameButton);
+      return item;
     });
     torrentList.replaceChildren(...items);
   };
@@ -290,27 +311,32 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     }
   };
 
-  const selectTorrent = async torrent => {
-    if (isSaving || isLoadingTorrents) {
+  const openRenameDialog = async (torrent, triggerButton) => {
+    if (isSaving || isLoadingTorrents || dialogElement) {
       return;
     }
 
     selectedTorrent = torrent;
+    dialogTriggerButton = triggerButton;
     files = [];
     preview = { error: '匹配正则不能为空', items: [] };
     isLoadingFiles = false;
     fileLoadError = null;
-    renderTorrentList();
-    renderPreview();
+    renderRenameDialog();
+    matchInput.focus();
     await loadSelectedTorrentFiles();
   };
 
   const loadTorrents = async () => {
     const requestVersion = ++torrentRequestVersion;
     isLoadingTorrents = true;
+    updateControls();
     renderTorrentList();
-    renderPreview();
-    setStatus('正在加载 Torrent');
+    if (dialogElement) {
+      renderPreview();
+      setStatus('正在加载 Torrent');
+    }
+    setTorrentListStatus('正在加载 Torrent');
     try {
       const serverTorrents = await api.requestTorrents();
       if (requestVersion !== torrentRequestVersion) {
@@ -333,12 +359,21 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
           didClearSelection = true;
         }
       }
+      updateControls();
       renderTorrentList();
-      renderPreview();
+      if (dialogElement) {
+        renderPreview();
+      }
       if (didClearSelection) {
-        setStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
+        setTorrentListStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
+        if (dialogElement) {
+          setStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
+        }
       } else {
-        setStatus(`已加载 ${torrents.length} 个 Torrent`);
+        setTorrentListStatus(`已加载 ${torrents.length} 个 Torrent`);
+        if (dialogElement) {
+          setStatus(`已加载 ${torrents.length} 个 Torrent`);
+        }
       }
       return { isCurrent: true, error: null };
     } catch (error) {
@@ -346,9 +381,13 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         return { isCurrent: false, error: null };
       }
       isLoadingTorrents = false;
+      updateControls();
       renderTorrentList();
-      renderPreview();
-      setStatus(`Torrent 加载失败：${error.message}`, true);
+      if (dialogElement) {
+        renderPreview();
+        setStatus(`Torrent 加载失败：${error.message}`, true);
+      }
+      setTorrentListStatus(`Torrent 加载失败：${error.message}`, true);
       return { isCurrent: true, error };
     }
   };
@@ -410,41 +449,27 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     }
   };
 
-  const renderTool = () => {
-    const layout = documentRef.createElement('div');
-    const torrentPanel = documentRef.createElement('section');
-    const editorPanel = documentRef.createElement('section');
+  const renderRenameDialog = () => {
+    const overlay = documentRef.createElement('div');
+    const dialog = documentRef.createElement('section');
     const previewTable = documentRef.createElement('table');
     const previewHead = documentRef.createElement('thead');
     const previewHeaderRow = documentRef.createElement('tr');
-    const torrentControls = documentRef.createElement('div');
     const actions = documentRef.createElement('div');
 
-    searchInput = documentRef.createElement('input');
-    torrentList = documentRef.createElement('div');
     matchInput = documentRef.createElement('input');
     replaceInput = documentRef.createElement('input');
     flagsInput = documentRef.createElement('input');
     previewBody = documentRef.createElement('tbody');
     selectAllButton = documentRef.createElement('button');
     clearSelectedButton = documentRef.createElement('button');
-    refreshTorrentsButton = documentRef.createElement('button');
     refreshButton = documentRef.createElement('button');
     saveButton = documentRef.createElement('button');
-    statusElement = documentRef.createElement('p');
+    dialogStatusElement = documentRef.createElement('p');
 
-    layout.className = 'torrent-renamer-layout';
-    torrentPanel.className = 'torrent-panel';
-    editorPanel.className = 'torrent-renamer-editor';
-    searchInput.id = 'torrent-search';
-    searchInput.type = 'search';
-    searchInput.placeholder = '搜索 Torrent 名称或 hash';
-    searchInput.setAttribute('aria-label', '搜索 Torrent 名称或 hash');
-    torrentControls.className = 'torrent-list-controls';
-    refreshTorrentsButton.id = 'refresh-torrents';
-    refreshTorrentsButton.type = 'button';
-    refreshTorrentsButton.textContent = '刷新 Torrent';
-    torrentList.className = 'torrent-list';
+    overlay.className = 'torrent-rename-overlay';
+    dialog.id = 'torrent-rename-dialog';
+    dialog.className = 'torrent-renamer-editor';
     matchInput.id = 'match-regex';
     matchInput.placeholder = '匹配正则';
     matchInput.setAttribute('aria-label', '匹配正则');
@@ -476,15 +501,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     saveButton.id = 'save-renames';
     saveButton.type = 'button';
     saveButton.textContent = '保存重命名';
-    statusElement.id = 'rename-status';
-    statusElement.setAttribute('role', 'status');
-    statusElement.setAttribute('aria-live', 'polite');
+    dialogStatusElement.id = 'rename-status';
+    dialogStatusElement.setAttribute('role', 'status');
+    dialogStatusElement.setAttribute('aria-live', 'polite');
 
-    searchInput.addEventListener('input', () => {
-      searchQuery = searchInput.value;
-      renderTorrentList();
-    });
-    refreshTorrentsButton.addEventListener('click', refreshTorrentList);
     [matchInput, replaceInput, flagsInput].forEach(input => input.addEventListener('input', rebuildPreview));
     selectAllButton.addEventListener('click', () => {
       preview.items.forEach(item => {
@@ -501,15 +521,49 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     refreshButton.addEventListener('click', () => loadSelectedTorrentFiles());
     saveButton.addEventListener('click', () => saveSelectedItems());
 
-    torrentControls.append(searchInput, refreshTorrentsButton);
-    torrentPanel.append(torrentControls, torrentList);
     actions.append(selectAllButton, clearSelectedButton, refreshButton, saveButton);
-    editorPanel.append(matchInput, replaceInput, flagsInput, previewTable, actions, statusElement);
-    layout.append(torrentPanel, editorPanel);
-    root.replaceChildren(layout);
-    renderTorrentList();
+    dialog.append(matchInput, replaceInput, flagsInput, previewTable, actions, dialogStatusElement);
+    overlay.append(dialog);
+    dialogElement = overlay;
+    root.append(overlay);
     renderPreview();
-    setStatus('请选择 Torrent');
+  };
+
+  const renderTool = () => {
+    const main = documentRef.createElement('section');
+    const torrentControls = documentRef.createElement('div');
+
+    searchInput = documentRef.createElement('input');
+    torrentList = documentRef.createElement('div');
+    refreshTorrentsButton = documentRef.createElement('button');
+    statusElement = documentRef.createElement('p');
+
+    main.className = 'torrent-renamer-main';
+    searchInput.id = 'torrent-search';
+    searchInput.type = 'search';
+    searchInput.placeholder = '搜索 Torrent 名称或 hash';
+    searchInput.setAttribute('aria-label', '搜索 Torrent 名称或 hash');
+    torrentControls.className = 'torrent-list-controls';
+    refreshTorrentsButton.id = 'refresh-torrents';
+    refreshTorrentsButton.type = 'button';
+    refreshTorrentsButton.textContent = '刷新 Torrent';
+    torrentList.className = 'torrent-list';
+    statusElement.id = 'torrent-list-status';
+    statusElement.setAttribute('role', 'status');
+    statusElement.setAttribute('aria-live', 'polite');
+
+    searchInput.addEventListener('input', () => {
+      searchQuery = searchInput.value;
+      renderTorrentList();
+    });
+    refreshTorrentsButton.addEventListener('click', refreshTorrentList);
+
+    torrentControls.append(searchInput, refreshTorrentsButton);
+    main.append(torrentControls, torrentList, statusElement);
+    root.replaceChildren(main);
+    updateControls();
+    renderTorrentList();
+    setTorrentListStatus('正在加载 Torrent');
   };
 
   const initialize = () => {
