@@ -64,7 +64,7 @@ test('Torrent 主界面只展示种子列表并通过重命名按钮请求文件
   assert.equal(findById(app, 'match-regex') !== undefined, true);
 });
 
-test('重命名弹窗提供语义、Escape 关闭、状态清理和焦点恢复', async () => {
+test('列表刷新后关闭弹窗恢复焦点到刷新后的重命名按钮', async () => {
   const { app, document, tool } = createToolFixture({
     requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
     requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
@@ -91,14 +91,15 @@ test('重命名弹窗提供语义、Escape 关闭、状态清理和焦点恢复'
   const headerTabEvent = document.dispatch('keydown', { key: 'Tab' });
   assert.equal(headerTabEvent.defaultPrevented, false);
 
-  findById(app, 'match-regex').value = '\\.old';
-  findById(app, 'match-regex').dispatch('input');
+  await tool.refresh();
+  const refreshedTrigger = findRenameButtons(app)[0];
+  assert.notEqual(refreshedTrigger, trigger);
   document.dispatch('keydown', { key: 'Escape' });
 
   assert.equal(findById(app, 'torrent-rename-dialog'), undefined);
-  assert.equal(document.activeElement, findRenameButtons(app)[0]);
+  assert.equal(document.activeElement, refreshedTrigger);
 
-  await trigger.dispatch('click').listenerResult;
+  await refreshedTrigger.dispatch('click').listenerResult;
   assert.equal(findById(app, 'match-regex').value, '');
   assert.equal(findPreviewRows(app).length, 0);
 });
