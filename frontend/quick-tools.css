@@ -59,19 +59,29 @@ button:disabled {
   color: #6b7280;
 }
 
+.quick-tools-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .tool-tabs {
+  position: sticky;
+  top: 24px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
-  padding: 6px;
+  padding: 8px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   background: #ffffff;
 }
 
 .tool-tab {
-  flex: 1 1 0;
+  width: 100%;
   color: #374151;
+  text-align: left;
   background: transparent;
 }
 
@@ -86,6 +96,10 @@ button:disabled {
 
 .tool-panel {
   min-height: 240px;
+}
+
+.tool-content {
+  min-width: 0;
 }
 
 .rules-list {
@@ -401,8 +415,12 @@ button:disabled {
     padding: 16px;
   }
 
+  .quick-tools-layout {
+    grid-template-columns: 1fr;
+  }
+
   .tool-tabs {
-    flex-direction: column;
+    position: static;
   }
 
   .rules-list,

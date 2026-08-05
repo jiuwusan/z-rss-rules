@@ -14,17 +14,21 @@
         <p>集中管理 RSS 规则关键词和 Torrent 文件名。</p>
       </header>
 
-      <nav id="quick-tools-tabs" class="tool-tabs" role="tablist" aria-label="Quick Tools">
-        <button id="rss-rules-tab" class="tool-tab" type="button" role="tab" aria-controls="rss-rules-panel" aria-selected="true">RSS 规则关键词</button>
-        <button id="torrent-renamer-tab" class="tool-tab" type="button" role="tab" aria-controls="torrent-renamer-panel" aria-selected="false">Torrent 文件重命名</button>
-      </nav>
+      <div class="quick-tools-layout">
+        <nav id="quick-tools-tabs" class="tool-tabs" role="tablist" aria-label="Quick Tools">
+          <button id="rss-rules-tab" class="tool-tab" type="button" role="tab" aria-controls="rss-rules-panel" aria-selected="true">RSS 规则关键词</button>
+          <button id="torrent-renamer-tab" class="tool-tab" type="button" role="tab" aria-controls="torrent-renamer-panel" aria-selected="false">Torrent 文件重命名</button>
+        </nav>
 
-      <section id="rss-rules-panel" class="tool-panel" role="tabpanel" aria-labelledby="rss-rules-tab">
-        <div id="rss-rules-tool"></div>
-      </section>
-      <section id="torrent-renamer-panel" class="tool-panel" role="tabpanel" aria-labelledby="torrent-renamer-tab" hidden>
-        <div id="torrent-renamer-tool"></div>
-      </section>
+        <div class="tool-content">
+          <section id="rss-rules-panel" class="tool-panel" role="tabpanel" aria-labelledby="rss-rules-tab">
+            <div id="rss-rules-tool"></div>
+          </section>
+          <section id="torrent-renamer-panel" class="tool-panel" role="tabpanel" aria-labelledby="torrent-renamer-tab" hidden>
+            <div id="torrent-renamer-tool"></div>
+          </section>
+        </div>
+      </div>
     </main>
     <script type="module" src="./quick-tools.js?v=1.0.0"></script>
   </body>

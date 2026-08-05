@@ -75,14 +75,17 @@ test('Quick Tools HTML 提供标题、样式、模块入口和两个工具面板
   assert.match(html, /id="rss-rules-tab"[^>]*aria-selected="true"/);
   assert.match(html, /id="torrent-renamer-tab"[^>]*aria-selected="false"/);
   assert.match(html, /id="torrent-renamer-panel"[^>]*hidden/);
+  assert.match(html, /class="quick-tools-layout"/);
+  assert.match(html, /<nav[^>]*id="quick-tools-tabs"[^>]*class="tool-tabs"/);
+  assert.match(html, /<div class="tool-content">/);
 });
 
-test('Quick Tools 样式包含双栏、窄屏纵向和登录弹窗样式', () => {
+test('Quick Tools 样式包含侧边导航壳层、窄屏布局和登录弹窗样式', () => {
   const css = fs.readFileSync(QUICK_TOOLS_CSS_PATH, 'utf8');
 
-  assert.match(css, /grid-template-columns:\s*minmax\([^;]+\)\s+minmax\([^;]+\)/);
-  assert.match(css, /@media\s*\(max-width:\s*\d+px\)/);
-  assert.match(css, /grid-template-columns:\s*1fr/);
+  assert.match(css, /\.quick-tools-layout\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*220px\s+minmax\(0,\s*1fr\);/s);
+  assert.match(css, /\.tool-tabs\s*\{[^}]*flex-direction:\s*column;/s);
+  assert.match(css, /@media\s*\(max-width:\s*760px\)[\s\S]*\.quick-tools-layout\s*\{[^}]*grid-template-columns:\s*1fr;/s);
   assert.match(css, /\.login-overlay\s*\{/);
   assert.match(css, /\.login-dialog\s*\{/);
   assert.match(css, /\.login-form\s*\{[^}]*margin:\s*0;/s);
