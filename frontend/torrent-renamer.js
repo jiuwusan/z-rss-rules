@@ -409,6 +409,11 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       dialogPanelElement?.focus();
       return;
     }
+    if (documentRef.activeElement === dialogPanelElement) {
+      event.preventDefault();
+      (event.shiftKey ? lastElement : firstElement).focus();
+      return;
+    }
     if (event.shiftKey && documentRef.activeElement === firstElement) {
       event.preventDefault();
       lastElement.focus();

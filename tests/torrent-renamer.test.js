@@ -294,6 +294,30 @@ test('保存挂起期间焦点停留在弹窗面板且 Tab 不会逃出 aria-mod
   await savePromise;
 });
 
+test('保存完成后焦点仍在弹窗面板时，双向 Tab 分别进入首尾控件', async () => {
+  const { app, document, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  findById(app, 'match-regex').value = '\\.old';
+  findById(app, 'match-regex').dispatch('input');
+
+  await findById(app, 'save-renames').dispatch('click').listenerResult;
+  const dialog = findById(app, 'torrent-rename-dialog');
+  assert.equal(document.activeElement, dialog);
+
+  const tabEvent = document.dispatch('keydown', { key: 'Tab' });
+  assert.equal(tabEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, findById(app, 'close-rename-dialog'));
+
+  dialog.focus();
+  const shiftTabEvent = document.dispatch('keydown', { key: 'Tab', shiftKey: true });
+  assert.equal(shiftTabEvent.defaultPrevented, true);
+  assert.equal(document.activeElement, findById(app, 'cancel-rename-dialog'));
+});
+
 test('splitTorrentPath 仅从最后一个正斜杠拆分路径', () => {
   assert.deepEqual(splitTorrentPath('目录/子目录/文件.mkv'), {
     directory: '目录/子目录/',
