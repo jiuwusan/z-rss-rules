@@ -64,6 +64,86 @@ test('Torrent 主界面只展示种子列表并通过重命名按钮请求文件
   assert.equal(findById(app, 'match-regex') !== undefined, true);
 });
 
+test('重命名弹窗提供语义、Escape 关闭、状态清理和焦点恢复', async () => {
+  const { app, document, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }]
+  });
+  await tool.initialize();
+  const trigger = findRenameButtons(app)[0];
+
+  await trigger.dispatch('click').listenerResult;
+  const dialog = findById(app, 'torrent-rename-dialog');
+  assert.equal(dialog.getAttribute('role'), 'dialog');
+  assert.equal(dialog.getAttribute('aria-modal'), 'true');
+  assert.equal(dialog.getAttribute('aria-labelledby'), 'torrent-rename-dialog-title');
+  assert.equal(document.activeElement, findById(app, 'match-regex'));
+
+  findById(app, 'cancel-rename-dialog').focus();
+  document.dispatch('keydown', { key: 'Tab' });
+  assert.equal(document.activeElement, findById(app, 'match-regex'));
+
+  findById(app, 'match-regex').focus();
+  document.dispatch('keydown', { key: 'Tab', shiftKey: true });
+  assert.equal(document.activeElement, findById(app, 'cancel-rename-dialog'));
+
+  findById(app, 'match-regex').value = '\\.old';
+  document.dispatch('keydown', { key: 'Escape' });
+
+  assert.equal(findById(app, 'torrent-rename-dialog'), undefined);
+  assert.equal(document.activeElement, trigger);
+
+  await trigger.dispatch('click').listenerResult;
+  assert.equal(findById(app, 'match-regex').value, '');
+  assert.equal(findPreviewRows(app).length, 0);
+});
+
+test('关闭后迟到的文件响应不会写入新弹窗', async () => {
+  const firstFiles = createDeferred();
+  const { app, tool } = createToolFixture({
+    requestTorrents: async () => [
+      { name: 'First', hash: 'first-hash' },
+      { name: 'Second', hash: 'second-hash' }
+    ],
+    requestTorrentFiles: hash =>
+      hash === 'first-hash'
+        ? firstFiles.promise
+        : Promise.resolve([{ index: 0, name: 'second.old.mkv' }])
+  });
+  await tool.initialize();
+
+  const firstOpen = findRenameButtons(app)[0].dispatch('click').listenerResult;
+  findById(app, 'close-rename-dialog').dispatch('click');
+  await findRenameButtons(app)[1].dispatch('click').listenerResult;
+  firstFiles.resolve([{ index: 0, name: 'first.old.mkv' }]);
+  await firstOpen;
+
+  assert.equal(findById(app, 'torrent-rename-dialog-title').textContent, 'Second');
+  assert.equal(app.textContent.includes('second.old.mkv'), true);
+  assert.equal(app.textContent.includes('first.old.mkv'), false);
+});
+
+test('保存期间关闭按钮和 Escape 不会关闭重命名弹窗', async () => {
+  const pendingRename = createDeferred();
+  const { app, document, tool } = createToolFixture({
+    requestTorrents: async () => [{ name: 'Show', hash: 'show-hash' }],
+    requestTorrentFiles: async () => [{ index: 0, name: 'episode.old.mkv' }],
+    renameTorrentFile: () => pendingRename.promise
+  });
+  await tool.initialize();
+  await findRenameButtons(app)[0].dispatch('click').listenerResult;
+  findById(app, 'match-regex').value = '\\.old';
+  findById(app, 'match-regex').dispatch('input');
+
+  const savePromise = findById(app, 'save-renames').dispatch('click').listenerResult;
+  findById(app, 'close-rename-dialog').dispatch('click');
+  document.dispatch('keydown', { key: 'Escape' });
+  assert.notEqual(findById(app, 'torrent-rename-dialog'), undefined);
+
+  pendingRename.resolve();
+  await savePromise;
+});
+
 test('splitTorrentPath 仅从最后一个正斜杠拆分路径', () => {
   assert.deepEqual(splitTorrentPath('目录/子目录/文件.mkv'), {
     directory: '目录/子目录/',
@@ -563,7 +643,7 @@ test('refresh 更新仍存在的选中 Torrent，并在其消失时清理文件�
   assert.equal(findById(app, 'rename-status').textContent.includes('当前选择已不存在'), true);
 });
 
-test('Torrent 列表刷新失败时保留已有列表、选择、预览和可操作状态', async () => {
+test('Torrent 列表刷新失败时保留已有列表、选择、预览和可操作状态，且不覆盖弹窗状态', async () => {
   let torrentRequestCount = 0;
   const { app, tool } = createToolFixture({
     requestTorrents: async () => {
@@ -593,7 +673,8 @@ test('Torrent 列表刷新失败时保留已有列表、选择、预览和可操
   assert.equal(matchInput.disabled, false);
   assert.equal(findById(app, 'save-renames').disabled, false);
   assert.equal(findById(app, 'refresh-torrents').disabled, false);
-  assert.equal(findById(app, 'rename-status').textContent.includes('模拟列表刷新失败'), true);
+  assert.equal(findById(app, 'torrent-list-status').textContent.includes('模拟列表刷新失败'), true);
+  assert.equal(findById(app, 'rename-status').textContent.includes('模拟列表刷新失败'), false);
 });
 
 test('文件加载中或失败后修改正则不会覆盖加载状态和错误状态', async () => {
@@ -629,6 +710,7 @@ test('文件加载中或失败后修改正则不会覆盖加载状态和错误�
   await firstSelection;
   const failureStatus = findById(app, 'rename-status').textContent;
   assert.equal(failureStatus.includes('模拟文件读取失败'), true);
+  assert.equal(findById(app, 'refresh-torrent-files').disabled, false);
   findById(app, 'replace-regex').value = 'new';
   findById(app, 'replace-regex').dispatch('input');
   findById(app, 'regex-flags').value = 'gi';

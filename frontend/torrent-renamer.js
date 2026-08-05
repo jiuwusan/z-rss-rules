@@ -141,11 +141,15 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   let dialogElement = null;
   let dialogTriggerButton = null;
   let dialogStatusElement = null;
+  let headerCloseButton = null;
+  let footerCloseButton = null;
 
-  const setStatus = (message, isError = false) => {
-    const targetElement = dialogStatusElement ?? statusElement;
-    targetElement.textContent = message;
-    targetElement.className = isError ? 'status-message status-error' : 'status-message';
+  const setRenameStatus = (message, isError = false) => {
+    if (!dialogStatusElement) {
+      return;
+    }
+    dialogStatusElement.textContent = message;
+    dialogStatusElement.className = isError ? 'status-message status-error' : 'status-message';
   };
 
   const setTorrentListStatus = (message, isError = false) => {
@@ -171,6 +175,8 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     clearSelectedButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
     saveButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
     saveButton.textContent = isSaving ? '保存中' : '保存重命名';
+    headerCloseButton.disabled = isSaving;
+    footerCloseButton.disabled = isSaving;
   };
 
   const renderTorrentList = () => {
@@ -270,10 +276,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     });
     renderPreview();
     if (preview.error) {
-      setStatus(`预览失败：${preview.error}`, true);
+      setRenameStatus(`预览失败：${preview.error}`, true);
       return;
     }
-    setStatus(selectedTorrent ? `已加载 ${files.length} 个文件` : '请选择 Torrent');
+    setRenameStatus(selectedTorrent ? `已加载 ${files.length} 个文件` : '请选择 Torrent');
   };
 
   const loadSelectedTorrentFiles = async () => {
@@ -286,7 +292,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     isLoadingFiles = true;
     fileLoadError = null;
     renderPreview();
-    setStatus('正在加载 Torrent 文件');
+    setRenameStatus('正在加载 Torrent 文件');
     try {
       const serverFiles = await api.requestTorrentFiles(requestedHash);
       if (requestVersion !== fileRequestVersion || requestedHash !== selectedTorrent?.hash) {
@@ -306,14 +312,82 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       files = [];
       preview = { error: error.message, items: [] };
       renderPreview();
-      setStatus(`Torrent 文件加载失败：${error.message}`, true);
+      setRenameStatus(`Torrent 文件加载失败：${error.message}`, true);
       return { isCurrent: true, error };
     }
   };
 
-  const openRenameDialog = async (torrent, triggerButton) => {
-    if (isSaving || isLoadingTorrents || dialogElement) {
+  const resetRenameState = () => {
+    selectedTorrent = null;
+    files = [];
+    preview = { error: '匹配正则不能为空', items: [] };
+    fileLoadError = null;
+    isLoadingFiles = false;
+    matchInput = null;
+    replaceInput = null;
+    flagsInput = null;
+    previewBody = null;
+    selectAllButton = null;
+    clearSelectedButton = null;
+    refreshButton = null;
+    saveButton = null;
+    dialogStatusElement = null;
+    headerCloseButton = null;
+    footerCloseButton = null;
+  };
+
+  const closeRenameDialog = () => {
+    if (!dialogElement || isSaving) {
       return;
+    }
+
+    const triggerButton = dialogTriggerButton;
+    fileRequestVersion += 1;
+    documentRef.removeEventListener('keydown', handleDialogKeydown);
+    dialogElement.remove();
+    dialogElement = null;
+    dialogTriggerButton = null;
+    resetRenameState();
+    triggerButton?.focus();
+  };
+
+  const handleDialogKeydown = event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeRenameDialog();
+      return;
+    }
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusableElements = [
+      matchInput,
+      replaceInput,
+      flagsInput,
+      selectAllButton,
+      clearSelectedButton,
+      refreshButton,
+      saveButton,
+      footerCloseButton
+    ].filter(element => element && !element.disabled);
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements.at(-1);
+    if (event.shiftKey && documentRef.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && documentRef.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
+
+  const openRenameDialog = async (torrent, triggerButton) => {
+    if (isSaving || isLoadingTorrents) {
+      return;
+    }
+    if (dialogElement) {
+      closeRenameDialog();
     }
 
     selectedTorrent = torrent;
@@ -323,6 +397,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     isLoadingFiles = false;
     fileLoadError = null;
     renderRenameDialog();
+    documentRef.addEventListener('keydown', handleDialogKeydown);
     matchInput.focus();
     await loadSelectedTorrentFiles();
   };
@@ -334,7 +409,6 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     renderTorrentList();
     if (dialogElement) {
       renderPreview();
-      setStatus('正在加载 Torrent');
     }
     setTorrentListStatus('正在加载 Torrent');
     try {
@@ -367,13 +441,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       if (didClearSelection) {
         setTorrentListStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
         if (dialogElement) {
-          setStatus(`已加载 ${torrents.length} 个 Torrent；当前选择已不存在`);
+          setRenameStatus('当前选择已不存在', true);
         }
       } else {
         setTorrentListStatus(`已加载 ${torrents.length} 个 Torrent`);
-        if (dialogElement) {
-          setStatus(`已加载 ${torrents.length} 个 Torrent`);
-        }
       }
       return { isCurrent: true, error: null };
     } catch (error) {
@@ -385,7 +456,6 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       renderTorrentList();
       if (dialogElement) {
         renderPreview();
-        setStatus(`Torrent 加载失败：${error.message}`, true);
       }
       setTorrentListStatus(`Torrent 加载失败：${error.message}`, true);
       return { isCurrent: true, error };
@@ -421,7 +491,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     isSaving = true;
     renderTorrentList();
     renderPreview();
-    setStatus('正在保存重命名');
+    setRenameStatus('正在保存重命名');
 
     try {
       for (const item of itemsToSave) {
@@ -438,9 +508,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       const refreshResult = await loadSelectedTorrentFiles();
       const refreshFailureMessage = refreshResult.error ? `；刷新失败：${refreshResult.error.message}` : '';
       if (saveError) {
-        setStatus(`成功 ${successCount} 项；失败文件：${failedItem.oldPath}；${saveError.message}${refreshFailureMessage}`, true);
+        setRenameStatus(`成功 ${successCount} 项；失败文件：${failedItem.oldPath}；${saveError.message}${refreshFailureMessage}`, true);
       } else {
-        setStatus(`成功 ${successCount} 项${refreshFailureMessage}`, Boolean(refreshResult.error));
+        setRenameStatus(`成功 ${successCount} 项${refreshFailureMessage}`, Boolean(refreshResult.error));
       }
     } finally {
       isSaving = false;
@@ -452,6 +522,11 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   const renderRenameDialog = () => {
     const overlay = documentRef.createElement('div');
     const dialog = documentRef.createElement('section');
+    const header = documentRef.createElement('header');
+    const titleGroup = documentRef.createElement('div');
+    const title = documentRef.createElement('h2');
+    const hash = documentRef.createElement('p');
+    const editor = documentRef.createElement('div');
     const previewTable = documentRef.createElement('table');
     const previewHead = documentRef.createElement('thead');
     const previewHeaderRow = documentRef.createElement('tr');
@@ -465,11 +540,29 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     clearSelectedButton = documentRef.createElement('button');
     refreshButton = documentRef.createElement('button');
     saveButton = documentRef.createElement('button');
+    headerCloseButton = documentRef.createElement('button');
+    footerCloseButton = documentRef.createElement('button');
     dialogStatusElement = documentRef.createElement('p');
 
     overlay.className = 'torrent-rename-overlay';
     dialog.id = 'torrent-rename-dialog';
-    dialog.className = 'torrent-renamer-editor';
+    dialog.className = 'torrent-rename-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'torrent-rename-dialog-title');
+    title.id = 'torrent-rename-dialog-title';
+    title.textContent = selectedTorrent?.name ?? 'Torrent 文件重命名';
+    hash.className = 'torrent-dialog-hash';
+    hash.textContent = selectedTorrent?.hash ?? '';
+    editor.className = 'torrent-renamer-editor';
+    headerCloseButton.id = 'close-rename-dialog';
+    headerCloseButton.type = 'button';
+    headerCloseButton.textContent = '关闭';
+    headerCloseButton.addEventListener('click', closeRenameDialog);
+    footerCloseButton.id = 'cancel-rename-dialog';
+    footerCloseButton.type = 'button';
+    footerCloseButton.textContent = '关闭';
+    footerCloseButton.addEventListener('click', closeRenameDialog);
     matchInput.id = 'match-regex';
     matchInput.placeholder = '匹配正则';
     matchInput.setAttribute('aria-label', '匹配正则');
@@ -521,8 +614,11 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     refreshButton.addEventListener('click', () => loadSelectedTorrentFiles());
     saveButton.addEventListener('click', () => saveSelectedItems());
 
-    actions.append(selectAllButton, clearSelectedButton, refreshButton, saveButton);
-    dialog.append(matchInput, replaceInput, flagsInput, previewTable, actions, dialogStatusElement);
+    titleGroup.append(title, hash);
+    header.append(titleGroup, headerCloseButton);
+    editor.append(matchInput, replaceInput, flagsInput);
+    actions.append(selectAllButton, clearSelectedButton, refreshButton, saveButton, footerCloseButton);
+    dialog.append(header, editor, previewTable, actions, dialogStatusElement);
     overlay.append(dialog);
     dialogElement = overlay;
     root.append(overlay);

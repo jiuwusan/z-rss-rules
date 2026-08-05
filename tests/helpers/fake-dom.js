@@ -90,12 +90,16 @@ export class FakeElement {
         this.defaultPrevented = true;
       }
     };
+    if (this.disabled && ['click', 'change', 'input'].includes(type)) {
+      return event;
+    }
     event.listenerResult = this.eventListeners[type]?.(event);
     return event;
   }
 }
 
 export const createFakeDocument = () => {
+  const documentEventListeners = {};
   const findById = (root, id) => {
     if (root.id === id) {
       return root;
@@ -113,7 +117,26 @@ export const createFakeDocument = () => {
   const document = {
     activeElement: null,
     createElement: tagName => new FakeElement(tagName, document),
-    getElementById: id => findById(body, id)
+    getElementById: id => findById(body, id),
+    addEventListener(type, listener) {
+      documentEventListeners[type] = listener;
+    },
+    removeEventListener(type, listener) {
+      if (documentEventListeners[type] === listener) {
+        delete documentEventListeners[type];
+      }
+    },
+    dispatch(type, properties = {}) {
+      const event = {
+        defaultPrevented: false,
+        ...properties,
+        preventDefault() {
+          this.defaultPrevented = true;
+        }
+      };
+      event.listenerResult = documentEventListeners[type]?.(event);
+      return event;
+    }
   };
   const body = new FakeElement('body', document);
   const app = new FakeElement('main', document);

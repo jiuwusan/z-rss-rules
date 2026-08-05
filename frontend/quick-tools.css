@@ -348,12 +348,55 @@ button:disabled {
 .torrent-rename-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 900;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background: rgb(17 24 39 / 55%);
+}
+
+.torrent-rename-dialog {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  width: min(1200px, 100%);
+  max-height: calc(100vh - 48px);
+  padding: 20px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgb(17 24 39 / 25%);
+}
+
+.torrent-rename-dialog header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.torrent-rename-dialog h2,
+.torrent-dialog-hash {
+  margin: 0;
+}
+
+.torrent-dialog-hash {
+  margin-top: 4px;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.torrent-rename-dialog .torrent-renamer-editor {
+  width: 100%;
+  max-height: none;
+  padding: 0;
+}
+
+.torrent-rename-dialog .rename-preview-table {
+  overflow: auto;
 }
 
 .login-overlay {
@@ -439,6 +482,16 @@ button:disabled {
   .rules-list,
   .torrent-renamer-editor {
     grid-template-columns: 1fr;
+  }
+
+  .torrent-rename-overlay {
+    padding: 8px;
+  }
+
+  .torrent-rename-dialog {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    padding: 14px;
   }
 
   .rename-preview-table,
