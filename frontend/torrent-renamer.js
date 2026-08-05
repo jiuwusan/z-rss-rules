@@ -160,20 +160,22 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   const getSelectedItems = () => preview.items.filter(item => item.isValid && item.isSelected);
 
   const updateControls = () => {
-    const isBusy = isSaving || isLoadingTorrents || isLoadingFiles;
-    searchInput.disabled = isBusy;
-    refreshTorrentsButton.disabled = isBusy;
+    const isListBusy = isLoadingTorrents || isSaving;
+    searchInput.disabled = isListBusy;
+    refreshTorrentsButton.disabled = isListBusy;
+    renderTorrentList();
     if (!dialogElement) {
       return;
     }
 
-    matchInput.disabled = isBusy || !selectedTorrent;
-    replaceInput.disabled = isBusy || !selectedTorrent;
-    flagsInput.disabled = isBusy || !selectedTorrent;
-    refreshButton.disabled = isBusy || isLoadingFiles || !selectedTorrent;
-    selectAllButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
-    clearSelectedButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || !getSelectedItems().length;
-    saveButton.disabled = isBusy || isLoadingFiles || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
+    const isDialogBusy = isSaving || isLoadingFiles;
+    matchInput.disabled = isDialogBusy;
+    replaceInput.disabled = isDialogBusy;
+    flagsInput.disabled = isDialogBusy;
+    refreshButton.disabled = isDialogBusy;
+    selectAllButton.disabled = isDialogBusy || Boolean(fileLoadError) || !preview.items.some(item => item.isValid);
+    clearSelectedButton.disabled = isDialogBusy || Boolean(fileLoadError) || !getSelectedItems().length;
+    saveButton.disabled = isDialogBusy || Boolean(fileLoadError) || Boolean(preview.error) || !getSelectedItems().length;
     saveButton.textContent = isSaving ? '保存中' : '保存重命名';
     headerCloseButton.disabled = isSaving;
     footerCloseButton.disabled = isSaving;
@@ -199,6 +201,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
       renameButton.disabled = isLoadingTorrents || isSaving;
       renameButton.setAttribute('aria-label', `重命名 ${torrent.name ?? torrent.hash ?? ''}`);
       renameButton.addEventListener('click', () => openRenameDialog(torrent, renameButton));
+      if (dialogElement && selectedTorrent?.hash === torrent.hash) {
+        dialogTriggerButton = renameButton;
+      }
 
       details.append(name, hash);
       item.append(details, renameButton);
@@ -233,7 +238,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     checkbox.className = 'rename-preview-select';
     checkbox.type = 'checkbox';
     checkbox.checked = item.isSelected;
-    checkbox.disabled = isSaving || isLoadingTorrents || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
+    checkbox.disabled = isSaving || isLoadingFiles || Boolean(fileLoadError) || !item.isValid;
     checkbox.setAttribute('aria-label', `保存 ${item.oldPath}`);
     checkbox.addEventListener('change', () => {
       item.isSelected = item.isValid && checkbox.checked;
@@ -249,6 +254,10 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
   };
 
   const renderPreview = () => {
+    if (!dialogElement || !previewBody || !selectedTorrent) {
+      return;
+    }
+
     const previewItemsByOldPath = new Map(preview.items.map(item => [item.oldPath, item]));
     const rows = files.flatMap((file, position) => {
       const originalRow = createOriginalRow(file);
@@ -431,6 +440,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
           fileRequestVersion += 1;
           isLoadingFiles = false;
           fileLoadError = null;
+          previewBody?.replaceChildren();
           didClearSelection = true;
         }
       }
@@ -486,6 +496,7 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     }
 
     const torrentHash = selectedTorrent.hash;
+    const isCurrentDialog = () => dialogElement && selectedTorrent?.hash === torrentHash;
     let successCount = 0;
     let failedItem = null;
     let saveError = null;
@@ -506,7 +517,15 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
         }
       }
 
+      if (!isCurrentDialog()) {
+        return;
+      }
+
       const refreshResult = await loadSelectedTorrentFiles();
+      if (!isCurrentDialog()) {
+        return;
+      }
+
       const refreshFailureMessage = refreshResult.error ? `；刷新失败：${refreshResult.error.message}` : '';
       if (saveError) {
         setRenameStatus(`成功 ${successCount} 项；失败文件：${failedItem.oldPath}；${saveError.message}${refreshFailureMessage}`, true);
@@ -516,7 +535,9 @@ export const createTorrentRenamerTool = ({ root, api, documentRef = globalThis.d
     } finally {
       isSaving = false;
       renderTorrentList();
-      renderPreview();
+      if (isCurrentDialog()) {
+        renderPreview();
+      }
     }
   };
 
