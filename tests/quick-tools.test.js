@@ -85,7 +85,9 @@ test('Quick Tools 样式包含侧边导航、重命名弹窗、窄屏布局和�
 
   assert.match(css, /\.quick-tools-layout\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*220px\s+minmax\(0,\s*1fr\);/s);
   assert.match(css, /\.tool-tabs\s*\{[^}]*flex-direction:\s*column;/s);
+  assert.match(css, /\.tool-tabs\s*\{[^}]*position:\s*sticky;[^}]*top:\s*24px;/s);
   assert.match(css, /@media\s*\(max-width:\s*760px\)[\s\S]*\.quick-tools-layout\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+  assert.match(css, /@media\s*\(max-width:\s*760px\)[\s\S]*\.tool-tabs\s*\{[^}]*position:\s*static;/s);
   assert.match(css, /\.torrent-rename-overlay\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;/s);
   assert.match(css, /\.torrent-rename-dialog\s*\{[^}]*max-height:\s*calc\(100vh\s*-\s*48px\);/s);
   assert.match(css, /@media\s*\(max-width:\s*760px\)[\s\S]*\.torrent-rename-dialog\s*\{[^}]*width:\s*100%;/s);
